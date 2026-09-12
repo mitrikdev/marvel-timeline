@@ -1,5 +1,7 @@
 import { mcu } from './mcu';
 import { legacy } from './legacy';
+import { mcuCharacterIdentities } from './identities-mcu';
+import { legacyCharacterIdentities } from './identities-legacy';
 import type { Character, Entity, Universe } from './types';
 
 export const universes: Universe[] = [
@@ -118,13 +120,30 @@ const characterOverrides: Record<string, { name: string; color: string; aliases?
   'frank-castle': { name: 'Punisher', color: '#b8c6d9' },
   'matt-murdock': { name: 'Daredevil', color: '#e77d77' },
 };
+const characterIdentities = { ...legacyCharacterIdentities, ...mcuCharacterIdentities };
 export const characters: Character[] = distinct([...mcu.characters, ...legacy.characters])
-  .map((character, index) => ({
-    ...character,
-    realName: character.name,
-    ...(characterOverrides[character.id] ?? { color: palette[index % palette.length] }),
-  }))
-  .sort((a, b) => a.name.localeCompare(b.name));
+  .map((character, index) => {
+    const override = characterOverrides[character.id];
+    const identity = characterIdentities[character.id];
+    const identityName = identity?.name ?? override?.name ?? character.name;
+    const realName = identity?.realName ?? character.name;
+    return {
+      ...character,
+      name: identityName === realName ? identityName : identityName + ' / ' + realName,
+      realName,
+      color: override?.color ?? palette[index % palette.length],
+      aliases: [
+        ...new Set([
+          character.name,
+          identityName,
+          realName,
+          ...(override?.aliases ?? []),
+          ...(identity?.aliases ?? []),
+        ]),
+      ],
+    };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 export const actors = distinct([...mcu.actors, ...legacy.actors]).sort((a, b) =>
   a.name.localeCompare(b.name),
 );

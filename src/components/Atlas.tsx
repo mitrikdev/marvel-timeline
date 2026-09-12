@@ -57,6 +57,7 @@ import { posters } from '@/data/posters';
 import { Sidebar } from './Sidebar';
 import { timelineEvents } from '@/data/events';
 import { filmSynopses } from '@/data/synopses';
+import { characterGroups } from '@/data/character-groups';
 import { getJourneyMovies, getCharacterVariants, type JourneySelection } from '@/lib/journeys';
 import { useWatchHistory } from '@/hooks/useWatchHistory';
 import { JourneyPicker, JourneyPlayer, JourneyTrace } from './Journey';
@@ -66,6 +67,9 @@ const ConnectionGame = dynamic(() =>
 );
 const WatchProgress = dynamic(() =>
   import('./WatchProgress').then((module) => module.WatchProgress),
+);
+const characterGroupNames = new Map(
+  characterGroups.flatMap((group) => group.characterIds.map((id) => [id, group.name] as const)),
 );
 const variantColors = [
   '#ffad7c',
@@ -87,8 +91,10 @@ const groups: { key: FilterGroup; label: string }[] = [
 ];
 const initials = (value: string) =>
   value
+    .split(' / ')[0]
     .split(/[\s-]+/)
     .map((word) => word[0])
+    .slice(0, 2)
     .slice(0, 2)
     .join('');
 const colorStyle = (color?: string): CSSProperties =>
@@ -1396,7 +1402,12 @@ function FilterDialog({
 }) {
   const [query, setQuery] = useState('');
   const filteredEntities = catalog[group].filter((entity: Entity) =>
-    [entity.name, ...(entity.aliases ?? []), 'realName' in entity ? entity.realName : '']
+    [
+      entity.name,
+      ...(entity.aliases ?? []),
+      'realName' in entity ? entity.realName : '',
+      group === 'characters' ? characterGroupNames.get(entity.id) : '',
+    ]
       .join(' ')
       .toLowerCase()
       .includes(query.toLowerCase()),
@@ -1441,12 +1452,7 @@ function FilterDialog({
             <span className="checkbox">
               {filters[group].includes(entity.id) && <Check size={13} />}
             </span>
-            <span>
-              {entity.name}
-              {'realName' in entity && entity.realName !== entity.name && (
-                <small>{String(entity.realName)}</small>
-              )}
-            </span>
+            <span>{entity.name}</span>
           </button>
         ))}
         {!filteredEntities.length && <p className="empty-search">No matches in this category.</p>}

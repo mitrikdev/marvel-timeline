@@ -56,6 +56,7 @@ export function JourneyPicker({
             <button key={entity.id} onClick={() => onStart({ kind, id: entity.id })}>
               <span className="journey-avatar" style={{ color: entity.color }}>
                 {entity.name
+                  .split(' / ')[0]
                   .split(' ')
                   .map((w) => w[0])
                   .slice(0, 2)
@@ -111,7 +112,7 @@ export function JourneyPlayer({
   return (
     <section className="journey-player" aria-label="Journey player">
       <div className="journey-player-heading">
-        <strong>
+        <strong title={entity?.name}>
           {entity?.name}{' '}
           <span>
             · {index + 1}/{total}

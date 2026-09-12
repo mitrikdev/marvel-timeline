@@ -223,6 +223,10 @@
 }
 .journey-player-heading strong {
   font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .journey-player-heading span {
   color: #8ca7bc;

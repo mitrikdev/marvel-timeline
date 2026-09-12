@@ -16,7 +16,7 @@ Open http://127.0.0.1:3000. The data, fonts, and poster artwork are local; no AP
 ## Explore
 
 - Drag or scroll the map in either direction; keyboard users can focus it and use arrow keys.
-- Filter sidebar universes by name, or browse every character in compact, collapsible team groups. Character search also matches real names, aliases, and team names.
+- Filter sidebar universes by name, or browse every character in compact, collapsible team groups, including Villains & rivals. Known hero and villain identities appear beside their alter egos, such as Spider-Man / Miles Morales and Prowler / Aaron Davis. Character search also matches real names, aliases, and team names.
 - Choose a character, actor, franchise/team, universe, studio, year range, or appearance role.
 - ANY matches at least one selected entity. ALL requires every selected entity. Year range (inclusive) and role constraints apply in both modes.
 - Movie positions stay fixed when filters change. + / − moves between compact overview, standard cards, and detailed cards with larger posters and full titles, while preserving the center date.
@@ -53,6 +53,7 @@ The tests cover dataset integrity, exact film scope, date ordering, variant refe
 - `src/data/legacy.ts`: 39 Sony, Fox, animated, and legacy films.
 - `src/data/helpers.ts`: normalizes curated appearances into separate movie, character, and actor records.
 - `src/data/index.ts`: continuity registry and searchable display names.
+- `src/data/identities-mcu.ts` and `src/data/identities-legacy.ts`: curated screen identities and villain navigation assignments; sources and scope notes are in `docs/sources-identities-mcu.md` and `docs/sources-identities-legacy.md`.
 - `src/data/character-groups.ts`: primary team/squad navigation groups and an Other characters section for the rest of the catalog.
 - `src/data/posters.ts` and `public/posters/`: local, optimized promotional cover artwork with source attribution in `docs/sources-posters.md`.
 - `src/data/synopses.ts`: original short film synopses, with source attribution in `docs/sources-synopses.md`.

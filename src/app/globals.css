@@ -354,6 +354,12 @@ button:hover:not(:disabled) {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.character-row .sidebar-row-name {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  line-height: 16px;
+}
 .sidebar-row-count {
   font-size: 11px;
   color: #818da2;

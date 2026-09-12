@@ -1,4 +1,6 @@
 import { characters } from './index';
+import { mcuVillainIds } from './identities-mcu';
+import { legacyVillainIds } from './identities-legacy';
 
 export type CharacterGroup = {
   id: string;
@@ -200,11 +202,21 @@ const coreGroups: CharacterGroup[] = [
   },
 ];
 
+const teamCharacterIds = new Set(coreGroups.flatMap((group) => group.characterIds));
+// Keep reformed characters with their established teams; these are browsing groups, not alignments.
+coreGroups.splice(1, 0, {
+  id: 'villains',
+  name: 'Villains & rivals',
+  characterIds: [...new Set([...mcuVillainIds, ...legacyVillainIds])].filter(
+    (id) => !teamCharacterIds.has(id),
+  ),
+});
+
 const primaryGroupByCharacter = new Map(
   coreGroups.flatMap((group) => group.characterIds.map((id) => [id, group.id] as const)),
 );
-const alphabeticCharacters = [...characters].sort((left, right) =>
-  left.name.localeCompare(right.name) || left.id.localeCompare(right.id),
+const alphabeticCharacters = [...characters].sort(
+  (left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id),
 );
 
 export const characterGroups: CharacterGroup[] = [

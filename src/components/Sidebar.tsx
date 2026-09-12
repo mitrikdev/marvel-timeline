@@ -183,7 +183,7 @@ export function Sidebar({
                 setCharacterQuery('');
               }
             }}
-            placeholder="Find a character or team…"
+            placeholder="Find heroes, villains, teams…"
             aria-label="Filter characters or teams"
             aria-controls="sidebar-character-list"
           />
@@ -239,11 +239,7 @@ export function Sidebar({
                         style={{ '--thread-color': character.color } as CSSProperties}
                         aria-label={`${character.name}, ${count} films`}
                         aria-pressed={selected}
-                        title={
-                          character.realName && character.realName !== character.name
-                            ? `${character.name} · ${character.realName}`
-                            : character.name
-                        }
+                        title={character.name}
                         onClick={() => onCharacter(character.id)}
                       >
                         <span className="sidebar-dot" style={{ background: character.color }} />

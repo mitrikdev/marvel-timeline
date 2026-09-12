@@ -66,7 +66,25 @@ test('the final Other characters section preserves access to the rest of the cat
   assert.equal(characterGroups.at(-1), other);
   assert.equal(other.name, 'Other characters');
   assert.ok(
-    other.characterIds.includes('thanos'),
-    'an ungrouped major character must remain discoverable',
+    other.characterIds.includes('aamir-khan'),
+    'supporting characters outside the named groups must remain discoverable',
   );
+});
+
+test('principal villains have an explicit group while redeemed team members retain their teams', () => {
+  const villains = group('villains').characterIds;
+  for (const id of [
+    'thanos',
+    'ultron',
+    'norman-osborn',
+    'otto-octavius',
+    'aaron-davis',
+    'wilson-fisk',
+  ]) {
+    assert.ok(villains.includes(id), id + ' must be discoverable among villains and rivals');
+    assert.equal(group('other-characters').characterIds.includes(id), false);
+  }
+  assert.ok(group('asgard').characterIds.includes('loki'));
+  assert.ok(group('guardians').characterIds.includes('nebula'));
+  assert.ok(group('thunderbolts').characterIds.includes('bucky-barnes'));
 });
