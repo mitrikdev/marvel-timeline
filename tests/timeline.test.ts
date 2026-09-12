@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Movie, Universe } from '../src/data/types';
+import { timelineEvents, type TimelineEvent } from '../src/data/events';
 import { movies as collection, universes as collectionUniverses } from '../src/data';
 import { buildLayout, threadPath, TIMELINE_METRICS } from '../src/lib/timeline';
 
@@ -10,6 +11,10 @@ const {
   cardHeight,
   cardGap,
   cardAnchorX,
+  eventWidth,
+  eventHeight,
+  eventGap,
+  eventTrackSpacing,
   trackSpacing,
   laneLabelHeight,
   lanePadding,
@@ -248,6 +253,238 @@ test('the complete collection stays collision-free and date-proportional at ever
           if (dy === 0) assert.ok(dx >= cardWidth + cardGap);
         }
       }
+    }
+  }
+});
+
+function timelineEvent(
+  id: string,
+  movieId: string,
+  kind: TimelineEvent['kind'] = 'story',
+): TimelineEvent {
+  return {
+    id,
+    title: id,
+    movieId,
+    kind,
+    description: 'An event in its associated film.',
+    sourceUrls: ['https://www.marvel.com/movies'],
+  };
+}
+
+function assertEventLayoutBounds(layout: ReturnType<typeof buildLayout>) {
+  for (const lane of layout.lanes) {
+    const laneTop = lane.y - lane.height / 2;
+    const laneBottom = lane.y + lane.height / 2;
+    const filmNodes = [...layout.nodes.values()].filter(
+      (node) => node.movie.primaryUniverseId === lane.id,
+    );
+    const eventNodes = [...layout.eventNodes.values()].filter(
+      (node) => node.movie.primaryUniverseId === lane.id,
+    );
+    const rectangles = [
+      ...filmNodes.map((node) => ({
+        id: node.movie.id,
+        x: node.x,
+        y: node.y,
+        width: cardWidth,
+        height: cardHeight,
+      })),
+      ...eventNodes.map((node) => ({
+        id: node.id,
+        x: node.x,
+        y: node.y,
+        width: eventWidth,
+        height: eventHeight,
+      })),
+    ];
+    for (const rectangle of rectangles) {
+      assert.ok(rectangle.x - cardAnchorX >= 0, rectangle.id + ': outside left canvas edge');
+      assert.ok(
+        rectangle.x - cardAnchorX + rectangle.width <= layout.width,
+        rectangle.id + ': outside right canvas edge',
+      );
+      assert.ok(
+        rectangle.y - rectangle.height / 2 >= laneTop + laneLabelHeight,
+        rectangle.id + ': overlaps lane label',
+      );
+      assert.ok(
+        rectangle.y + rectangle.height / 2 <= laneBottom - lanePadding,
+        rectangle.id + ': outside lane bottom',
+      );
+    }
+    for (let left = 0; left < rectangles.length; left += 1) {
+      for (let right = left + 1; right < rectangles.length; right += 1) {
+        const a = rectangles[left];
+        const b = rectangles[right];
+        const separateX = a.x + a.width <= b.x || b.x + b.width <= a.x;
+        const separateY =
+          a.y + a.height / 2 <= b.y - b.height / 2 || b.y + b.height / 2 <= a.y - a.height / 2;
+        assert.ok(separateX || separateY, a.id + ' overlaps ' + b.id);
+      }
+    }
+    for (let left = 0; left < eventNodes.length; left += 1) {
+      for (let right = left + 1; right < eventNodes.length; right += 1) {
+        if (eventNodes[left].y === eventNodes[right].y) {
+          assert.ok(
+            Math.abs(eventNodes[left].x - eventNodes[right].x) >= eventWidth + eventGap,
+            'event row needs horizontal gap',
+          );
+        }
+      }
+    }
+    if (eventNodes.length && filmNodes.length) {
+      const eventBottom = Math.max(...eventNodes.map((node) => node.y + eventHeight / 2));
+      const filmTop = Math.min(...filmNodes.map((node) => node.y - cardHeight / 2));
+      assert.ok(filmTop - eventBottom >= eventGap, 'events must have a gap before film tracks');
+    }
+  }
+}
+
+test('omitting or hiding events preserves the existing film layout with no reserved event rows', () => {
+  const movies = [movie('early', '2000-01-01'), movie('late', '2002-12-31', 'raimi')];
+  const omitted = buildLayout(movies, universes, 160);
+  const hidden = buildLayout(movies, universes, 160, []);
+  assert.deepEqual(omitted, hidden);
+  assert.equal(omitted.eventNodes.size, 0);
+  assert.equal(omitted.height, 184);
+  assert.equal(omitted.lanes[0].height, 84);
+  assert.equal(
+    omitted.nodes.get('early')!.y,
+    canvasVerticalPadding + laneLabelHeight + cardHeight / 2,
+  );
+});
+
+test('events use their exact film x, date and primary lane while only occupied lanes reserve space', () => {
+  const movies = [
+    movie('first', '2000-01-01'),
+    movie('last', '2004-12-31'),
+    movie('other', '2001-01-01', 'raimi'),
+  ];
+  const events = [timelineEvent('start', 'first', 'milestone'), timelineEvent('ending', 'last')];
+  const withoutEvents = buildLayout(movies, universes, 160);
+  const layout = buildLayout(movies, universes, 160, events);
+  assert.equal(layout.eventNodes.size, 2);
+  assert.equal(layout.lanes[0].height - withoutEvents.lanes[0].height, eventHeight + eventGap);
+  assert.equal(layout.lanes[1].height, withoutEvents.lanes[1].height);
+  assert.equal(layout.height - withoutEvents.height, eventHeight + eventGap);
+  assert.equal(
+    layout.eventNodes.get('start')!.y,
+    layout.eventNodes.get('ending')!.y,
+    'distant events reuse a row',
+  );
+  for (const event of events) {
+    const node = layout.eventNodes.get(event.id)!;
+    assert.equal(node.id, event.id);
+    assert.equal(node.event, event);
+    assert.equal(
+      node.movie,
+      movies.find((movie) => movie.id === event.movieId),
+    );
+    assert.equal(node.x, layout.nodes.get(event.movieId)!.x);
+    assert.equal(node.x, withoutEvents.nodes.get(event.movieId)!.x);
+  }
+  assertEventLayoutBounds(layout);
+});
+
+test('same-film events and nearby-year events get deterministic separate rows without input mutation', () => {
+  const movies = [
+    movie('first', '2000-01-01'),
+    movie('next', '2001-01-01'),
+    movie('later', '2005-01-01'),
+  ];
+  const events = [
+    timelineEvent('z-first', 'first'),
+    timelineEvent('a-first', 'first', 'milestone'),
+    timelineEvent('next', 'next'),
+    timelineEvent('later', 'later'),
+  ];
+  const layout = buildLayout(movies, universes, 160, events);
+  const reversed = buildLayout([...movies].reverse(), universes, 160, [...events].reverse());
+  assert.deepEqual(layout, reversed);
+  assert.equal(
+    layout.eventNodes.get('z-first')!.y - layout.eventNodes.get('a-first')!.y,
+    eventTrackSpacing,
+  );
+  assert.equal(
+    layout.eventNodes.get('next')!.y - layout.eventNodes.get('z-first')!.y,
+    eventTrackSpacing,
+  );
+  assert.equal(layout.eventNodes.get('later')!.y, layout.eventNodes.get('a-first')!.y);
+  assert.deepEqual(
+    events.map((event) => event.id),
+    ['z-first', 'a-first', 'next', 'later'],
+  );
+  assertEventLayoutBounds(layout);
+});
+
+test('event layout rejects unknown movie references with event and movie identifiers', () => {
+  assert.throws(
+    () =>
+      buildLayout([movie('existing', '2000-01-01')], universes, 160, [
+        timelineEvent('bad-event', 'missing-film'),
+      ]),
+    /Timeline event "bad-event" references unknown movie "missing-film"/,
+  );
+});
+
+test('dense event badges and film cards never overlap or clip at any supported zoom', () => {
+  const movies = [
+    movie('first', '2000-01-01'),
+    movie('same-date', '2000-01-01'),
+    movie('nearby', '2000-02-01'),
+    movie('next-year', '2001-01-01'),
+    movie('latest', '2004-12-31'),
+    movie('other-universe', '2000-01-01', 'raimi'),
+  ];
+  const events = [
+    timelineEvent('a', 'first'),
+    timelineEvent('b', 'first', 'milestone'),
+    timelineEvent('c', 'same-date'),
+    timelineEvent('d', 'nearby'),
+    timelineEvent('e', 'next-year'),
+    timelineEvent('f', 'latest'),
+    timelineEvent('g', 'other-universe'),
+  ];
+  for (const scale of [100, 130, 160, 190, 220, 250, 280]) {
+    const layout = buildLayout(movies, universes, scale, events);
+    assert.equal(layout.eventNodes.size, events.length);
+    for (const node of layout.eventNodes.values())
+      assert.equal(node.x, layout.nodes.get(node.movie.id)!.x);
+    assertEventLayoutBounds(layout);
+  }
+});
+
+test('canonical story events fit every zoom and leave unoccupied lane heights unchanged', () => {
+  assert.ok(timelineEvents.length > 0);
+  const occupiedLanes = new Set(
+    timelineEvents.map(
+      (event) => collection.find((movie) => movie.id === event.movieId)!.primaryUniverseId,
+    ),
+  );
+  for (const scale of [100, 130, 160, 190, 220, 250, 280]) {
+    const baseline = buildLayout(collection, collectionUniverses, scale);
+    const layout = buildLayout(collection, collectionUniverses, scale, timelineEvents);
+    assert.equal(layout.eventNodes.size, timelineEvents.length);
+    assertEventLayoutBounds(layout);
+    for (const node of layout.eventNodes.values()) {
+      assert.equal(node.x, layout.nodes.get(node.movie.id)!.x);
+      assert.equal(node.x, baseline.nodes.get(node.movie.id)!.x);
+    }
+    for (const lane of layout.lanes) {
+      const originalLane = baseline.lanes.find((item) => item.id === lane.id)!;
+      if (!occupiedLanes.has(lane.id)) assert.equal(lane.height, originalLane.height);
+      const films = [...layout.nodes.values()].filter(
+        (node) => node.movie.primaryUniverseId === lane.id,
+      );
+      const relativeShifts = films.map(
+        (node) => node.y - lane.y - (baseline.nodes.get(node.movie.id)!.y - originalLane.y),
+      );
+      assert.equal(
+        new Set(relativeShifts).size,
+        Math.min(1, films.length),
+        'events must not reorder existing film tracks',
+      );
     }
   }
 });

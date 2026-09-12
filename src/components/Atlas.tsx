@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Compass,
   Crosshair,
+  Diamond,
   Expand,
   GitBranch,
   Info,
@@ -47,6 +48,8 @@ import type { Entity, FilterGroup, Filters, MatchMode, Movie, Role } from '@/dat
 import { emptyFilters, getMatchingMovies, hasActiveFilters } from '@/lib/filter';
 import { buildLayout, threadPath, TIMELINE_METRICS } from '@/lib/timeline';
 import { Dialog } from './Dialog';
+import { EventDetails } from './EventDetails';
+import { timelineEvents } from '@/data/events';
 
 const groups: { key: FilterGroup; label: string }[] = [
   { key: 'characters', label: 'Characters' },
@@ -83,6 +86,8 @@ export function Atlas() {
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [matchMode, setMatchMode] = useState<MatchMode>('any');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [showEvents, setShowEvents] = useState(true);
   const [panel, setPanel] = useState<'filters' | 'about' | null>(null);
   const [filterGroup, setFilterGroup] = useState<FilterGroup>('characters');
   const [query, setQuery] = useState('');
@@ -102,7 +107,10 @@ export function Atlas() {
   const zoomAnchor = useRef<{ yearOffset: number; universeId: string; laneOffset: number } | null>(
     null,
   );
-  const layout = useMemo(() => buildLayout(movies, universes, density), [density]);
+  const layout = useMemo(
+    () => buildLayout(movies, universes, density, showEvents ? timelineEvents : []),
+    [density, showEvents],
+  );
   const matching = useMemo(
     () => getMatchingMovies(movies, filters, matchMode),
     [filters, matchMode],
@@ -110,6 +118,8 @@ export function Atlas() {
   const matchingIds = useMemo(() => new Set(matching.map((movie) => movie.id)), [matching]);
   const active = hasActiveFilters(filters);
   const selectedMovie = selectedId ? movieById.get(selectedId) : undefined;
+  const selectedEvent = timelineEvents.find((event) => event.id === selectedEventId);
+  const selectedEventMovie = selectedEvent ? movieById.get(selectedEvent.movieId) : undefined;
   const selectedCount =
     groups.reduce((total, group) => total + filters[group.key].length, 0) +
     filters.roles.length +
@@ -129,7 +139,17 @@ export function Atlas() {
     );
   }
   function scrollToMovie(id: string) {
-    const node = layout.nodes.get(id);
+    scrollToNode(layout.nodes.get(id));
+  }
+  function scrollToEvent(id: string) {
+    const node = layout.eventNodes.get(id);
+    if (node) scrollToNode(node);
+    else {
+      const event = timelineEvents.find((item) => item.id === id);
+      if (event) scrollToMovie(event.movieId);
+    }
+  }
+  function scrollToNode(node?: { x: number; y: number }) {
     if (node && viewport.current)
       viewport.current.scrollTo({
         left: node.x - viewport.current.clientWidth / 2,
@@ -143,7 +163,7 @@ export function Atlas() {
       behavior: prefersReducedMotion() ? 'instant' : 'smooth',
     });
   }
-  function zoom(nextDensity: number) {
+  function rememberViewport() {
     const view = viewport.current;
     if (view) {
       const middleY = view.scrollTop + view.clientHeight / 2 - 36;
@@ -157,6 +177,9 @@ export function Atlas() {
         laneOffset: (middleY - lane.y) / lane.height,
       };
     }
+  }
+  function zoom(nextDensity: number) {
+    rememberViewport();
     setDensity(nextDensity);
   }
   useLayoutEffect(() => {
@@ -212,7 +235,7 @@ export function Atlas() {
     const found: {
       id: string;
       name: string;
-      type: FilterGroup | 'movie';
+      type: FilterGroup | 'movie' | 'event';
       detail: string;
       color?: string;
     }[] = [];
@@ -241,7 +264,16 @@ export function Atlas() {
         detail: `Film · ${movie.releaseDate.slice(0, 4)}`,
         color: undefined,
       }));
-    return [...found.slice(0, 5), ...filmResults.slice(0, 5)];
+    const eventResults = timelineEvents
+      .filter((event) => event.title.toLowerCase().includes(q))
+      .map((event) => ({
+        id: event.id,
+        name: event.title,
+        type: 'event' as const,
+        detail: `${event.kind === 'story' ? 'Story event' : 'Series milestone'} · ${movieById.get(event.movieId)?.releaseDate.slice(0, 4)} release`,
+        color: '#edc27c',
+      }));
+    return [...eventResults.slice(0, 5), ...found.slice(0, 5), ...filmResults.slice(0, 5)];
   }, [query]);
 
   const threads = useMemo(() => {
@@ -461,8 +493,8 @@ export function Atlas() {
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Find a movie, character, actor…"
-                  aria-label="Search movies, characters, actors, franchises and universes"
+                  placeholder="Find a film, event, character…"
+                  aria-label="Search movies, events, characters, actors, franchises and universes"
                   aria-controls="search-results"
                   autoComplete="off"
                 />
@@ -475,6 +507,10 @@ export function Atlas() {
                       if (type === 'movie') {
                         setSelectedId(id);
                         scrollToMovie(id);
+                      } else if (type === 'event') {
+                        setSelectedId(null);
+                        setSelectedEventId(id);
+                        scrollToEvent(id);
                       } else addFilter(type, id);
                       setQuery('');
                     }}
@@ -576,9 +612,22 @@ export function Atlas() {
                 <span>
                   <span className="status-dot" /> RELEASE ORDER
                 </span>
-                <span className="map-pan-hint">
-                  <Move size={12} /> DRAG TO EXPLORE
-                </span>
+                <div className="map-topline-actions">
+                  <button
+                    className="event-toggle"
+                    aria-label="Show major events"
+                    aria-pressed={showEvents}
+                    onClick={() => {
+                      rememberViewport();
+                      setShowEvents((value) => !value);
+                    }}
+                  >
+                    <Diamond size={12} /> Events {showEvents && <Check size={12} />}
+                  </button>
+                  <span className="map-pan-hint">
+                    <Move size={12} /> DRAG TO EXPLORE
+                  </span>
+                </div>
               </div>
               <div
                 className="timeline-scroll"
@@ -628,6 +677,8 @@ export function Atlas() {
                         height: layout.height,
                         '--movie-card-width': `${TIMELINE_METRICS.cardWidth}px`,
                         '--movie-card-height': `${TIMELINE_METRICS.cardHeight}px`,
+                        '--event-card-width': `${TIMELINE_METRICS.eventWidth}px`,
+                        '--event-card-height': `${TIMELINE_METRICS.eventHeight}px`,
                       } as CSSProperties
                     }
                   >
@@ -744,6 +795,30 @@ export function Atlas() {
                           });
                         })}
                     </svg>
+                    {[...layout.eventNodes.values()].map(({ event, movie, x, y }) => (
+                      <button
+                        key={event.id}
+                        className={`event-node ${event.kind} ${matchingIds.has(movie.id) ? 'is-match' : 'is-faded'}`}
+                        data-event-id={event.id}
+                        data-movie-anchor={movie.id}
+                        data-matching={matchingIds.has(movie.id)}
+                        aria-label={`${event.title}, ${event.kind === 'story' ? 'story event' : 'series milestone'}, ${movie.releaseDate.slice(0, 4)} release${active ? (matchingIds.has(movie.id) ? ', matches filters' : ', outside filters') : ''}`}
+                        aria-haspopup="dialog"
+                        aria-pressed={selectedEventId === event.id}
+                        title={`${event.title} · ${movie.title}`}
+                        style={{
+                          left: x - TIMELINE_METRICS.cardAnchorX,
+                          top: y - TIMELINE_METRICS.eventHeight / 2,
+                        }}
+                        onClick={() => {
+                          setSelectedId(null);
+                          setSelectedEventId(event.id);
+                        }}
+                      >
+                        <Diamond size={13} aria-hidden="true" />
+                        <span>{event.title}</span>
+                      </button>
+                    ))}
                     {movies.map((movie) => {
                       const node = layout.nodes.get(movie.id);
                       if (!node) return null;
@@ -844,6 +919,11 @@ export function Atlas() {
                 <span>
                   <i className="legend-crossover" /> Crossover
                 </span>
+                {showEvents && (
+                  <span className="legend-event">
+                    <Diamond size={11} /> Major event
+                  </span>
+                )}
                 {threads.length ? (
                   <span className="legend-active">
                     {threads.length} active {threads.length === 1 ? 'thread' : 'threads'}
@@ -960,12 +1040,28 @@ export function Atlas() {
               The dataset covers major characters and selected cameos, rather than every credit.
               Each movie’s detail panel links to its sources and any curation notes.
             </p>
+            <p>
+              Diamond markers show major story events and series milestones. Events sit at the US
+              release date of their related film, rather than their in-universe year. The Events
+              control hides or shows these markers; filters dim events alongside their films.
+            </p>
             <div className="about-note">
               An independent fan project. Marvel and film titles belong to their respective owners.
               This atlas is not affiliated with Marvel, Disney, Sony, or their partners.
             </div>
           </div>
         </Dialog>
+      )}
+      {selectedEvent && selectedEventMovie && (
+        <EventDetails
+          event={selectedEvent}
+          movie={selectedEventMovie}
+          onClose={() => setSelectedEventId(null)}
+          onMovie={() => {
+            setSelectedEventId(null);
+            setSelectedId(selectedEventMovie.id);
+          }}
+        />
       )}
       {selectedMovie && (
         <MovieDetails
@@ -989,12 +1085,12 @@ function SearchResults({
   results: {
     id: string;
     name: string;
-    type: FilterGroup | 'movie';
+    type: FilterGroup | 'movie' | 'event';
     detail: string;
     color?: string;
   }[];
   onClose: () => void;
-  onSelect: (id: string, type: FilterGroup | 'movie') => void;
+  onSelect: (id: string, type: FilterGroup | 'movie' | 'event') => void;
 }) {
   return (
     <div id="search-results" className="search-results" role="region" aria-label="Search results">
@@ -1011,7 +1107,13 @@ function SearchResults({
             onClick={() => onSelect(result.id, result.type)}
           >
             <span className="search-result-icon" style={colorStyle(result.color)}>
-              {result.type === 'movie' ? <Layers3 size={15} /> : <GitBranch size={15} />}
+              {result.type === 'movie' ? (
+                <Layers3 size={15} />
+              ) : result.type === 'event' ? (
+                <Diamond size={15} />
+              ) : (
+                <GitBranch size={15} />
+              )}
             </span>
             <span>
               {result.name}
@@ -1021,7 +1123,7 @@ function SearchResults({
           </button>
         ))
       ) : (
-        <p className="empty-search">No results. Try a movie title or an actor’s name.</p>
+        <p className="empty-search">No results. Try a film, event, or actor’s name.</p>
       )}
     </div>
   );

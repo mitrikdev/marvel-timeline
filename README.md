@@ -20,6 +20,8 @@ Open http://127.0.0.1:3000. The data and fonts are local; no API keys, database,
 - ANY matches at least one selected entity. ALL requires every selected entity. Year range (inclusive) and role constraints apply in both modes.
 - Movie positions stay fixed when filters change. + / − changes spacing while preserving the center date.
 - Click a film for cast, continuity, crossover details, curation notes, and source links.
+- Diamond markers show major story events and series milestones. Search for events or click their markers to open details and the related film. The Events toggle reclaims their space when hidden.
+- Events are anchored to their related film’s US release date, not an in-universe year. Film filters also dim events whose related films do not match.
 - On phones, portrait displays a “Rotate your phone” screen. Landscape restores the map and current state, including open panels.
 - Peter Parker and Miles Morales are separate character records; the Spider-Man franchise includes their wider film family.
 
@@ -40,6 +42,7 @@ The tests cover dataset integrity, exact film scope, date ordering, variant refe
 - `src/data/legacy.ts`: 39 Sony, Fox, animated, and legacy films.
 - `src/data/helpers.ts`: normalizes curated appearances into separate movie, character, and actor records.
 - `src/data/index.ts`: continuity registry and searchable display names.
+- `src/data/events.ts`: major story events and film-series milestones, with related movie ids and sources.
 - `docs/sources-mcu.md` and `docs/sources-legacy.md`: source and curation notes.
 
 Use US theatrical dates. Role labels are editorial categories, not screen-time measurements. The collection is curated rather than an exhaustive credit catalog. Newer releases include only verified character identities. The latest _Fantastic Four_ setting has its own lane; crossover metadata keeps primary continuity separate from visiting characters.
