@@ -26,15 +26,12 @@ export const TIMELINE_METRICS = {
 
 const {
   axisPadding: AXIS_PADDING,
-  cardWidth: CARD_WIDTH,
-  cardHeight: CARD_HEIGHT,
   cardGap: CARD_GAP,
   eventWidth: EVENT_WIDTH,
   eventHeight: EVENT_HEIGHT,
   eventGap: EVENT_GAP,
   eventTrackSpacing: EVENT_TRACK_SPACING,
   cardAnchorX: CARD_ANCHOR_X,
-  trackSpacing: TRACK_SPACING,
   laneLabelHeight: LANE_LABEL_HEIGHT,
   lanePadding: LANE_PADDING,
   minLaneHeight: MIN_LANE_HEIGHT,
@@ -45,7 +42,12 @@ type TimelineNode = { x: number; y: number; movie: Movie };
 type TimelineEventNode = { id: string; x: number; y: number; event: TimelineEvent; movie: Movie };
 type TimelineLane = { id: string; y: number; height: number };
 
+export type TimelineDetailLevel = 'overview' | 'standard' | 'detail';
+export type TimelineMetrics = { readonly [Key in keyof typeof TIMELINE_METRICS]: number };
+
 export type TimelineLayout = {
+  metrics: TimelineMetrics;
+  detailLevel: TimelineDetailLevel;
   width: number;
   height: number;
   yearStart: number;
@@ -78,6 +80,18 @@ export function buildLayout(
   if (!Number.isFinite(pixelsPerYear) || pixelsPerYear <= 0) {
     throw new RangeError('pixelsPerYear must be a positive finite number');
   }
+
+  const detailLevel: TimelineDetailLevel =
+    pixelsPerYear <= 110 ? 'overview' : pixelsPerYear >= 190 ? 'detail' : 'standard';
+  const metrics: TimelineMetrics = {
+    ...TIMELINE_METRICS,
+    ...(detailLevel === 'overview'
+      ? { cardWidth: 156, cardHeight: 40, trackSpacing: 42 }
+      : detailLevel === 'detail'
+        ? { cardWidth: 296, cardHeight: 96, trackSpacing: 100 }
+        : {}),
+  };
+  const { cardWidth: CARD_WIDTH, cardHeight: CARD_HEIGHT, trackSpacing: TRACK_SPACING } = metrics;
 
   const releases = movies.map((movie) => ({ movie, time: releaseTime(movie) }));
   releases.sort(
@@ -196,7 +210,7 @@ export function buildLayout(
   }
   height += CANVAS_VERTICAL_PADDING;
 
-  return { width, height, yearStart, yearEnd, nodes, eventNodes, lanes };
+  return { width, height, yearStart, yearEnd, nodes, eventNodes, lanes, metrics, detailLevel };
 }
 
 /** Horizontal cubic tangents join chronological nodes at their exact anchors. */

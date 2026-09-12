@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   useEffect,
   useLayoutEffect,
@@ -28,6 +29,10 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Sparkles,
+  Play,
+  Route,
+  CircleCheck,
   X,
   Minus,
 } from 'lucide-react';
@@ -51,6 +56,27 @@ import { MoviePoster } from './MoviePoster';
 import { posters } from '@/data/posters';
 import { Sidebar } from './Sidebar';
 import { timelineEvents } from '@/data/events';
+import { filmSynopses } from '@/data/synopses';
+import { getJourneyMovies, getCharacterVariants, type JourneySelection } from '@/lib/journeys';
+import { useWatchHistory } from '@/hooks/useWatchHistory';
+import { JourneyPicker, JourneyPlayer, JourneyTrace } from './Journey';
+import './AtlasFeatures.css';
+const ConnectionGame = dynamic(() =>
+  import('./ConnectionGame').then((module) => module.ConnectionGame),
+);
+const WatchProgress = dynamic(() =>
+  import('./WatchProgress').then((module) => module.WatchProgress),
+);
+const variantColors = [
+  '#ffad7c',
+  '#77d9f0',
+  '#c4a0ff',
+  '#f8ce70',
+  '#90dfaa',
+  '#ee92ce',
+  '#8eb8ff',
+  '#e3a594',
+];
 
 const groups: { key: FilterGroup; label: string }[] = [
   { key: 'characters', label: 'Characters' },
@@ -81,13 +107,29 @@ export function Atlas() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [showEvents, setShowEvents] = useState(true);
-  const [panel, setPanel] = useState<'filters' | 'about' | null>(null);
+  const [panel, setPanel] = useState<
+    'filters' | 'about' | 'explore' | 'journey' | 'connect' | 'watch' | null
+  >(null);
   const [filterGroup, setFilterGroup] = useState<FilterGroup>('characters');
   const [query, setQuery] = useState('');
   const [density, setDensity] = useState<number>(TIMELINE_METRICS.densityDefault);
+  const [variantsShown, setVariantsShown] = useState(false);
+  const [journeySelection, setJourneySelection] = useState<JourneySelection | null>(null);
+  const [journeyIndex, setJourneyIndex] = useState(0);
+  const [journeyPlaying, setJourneyPlaying] = useState(false);
+  const watch = useWatchHistory();
+  const watchedIds = useMemo(() => new Set(watch.watchedIds), [watch.watchedIds]);
+  const journeyFilms = useMemo(
+    () => (journeySelection ? getJourneyMovies(movies, journeySelection) : []),
+    [journeySelection],
+  );
+  const journeyFilm = journeyFilms[journeyIndex];
   const viewport = useRef<HTMLDivElement>(null);
   const minimapWindow = useRef<HTMLSpanElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const exploreButton = useRef<HTMLButtonElement>(null);
+  const followedJourneyStop = useRef<string | null>(null);
+  const filmFromExplore = useRef(false);
   const drag = useRef<{
     x: number;
     y: number;
@@ -118,7 +160,106 @@ export function Atlas() {
     filters.roles.length +
     (filters.yearRange ? 1 : 0);
 
+  function focusExplore() {
+    requestAnimationFrame(() => exploreButton.current?.focus());
+  }
+  function closeExplore() {
+    setPanel(null);
+    focusExplore();
+  }
+  function closeMovie() {
+    setSelectedId(null);
+    if (filmFromExplore.current) {
+      filmFromExplore.current = false;
+      focusExplore();
+    }
+  }
+  function endJourney() {
+    setJourneySelection(null);
+    setJourneyPlaying(false);
+  }
+  function startJourney(selection: JourneySelection) {
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLButtonElement>('.journey-play')?.focus(),
+    );
+    setVariantsShown(false);
+    setDensity(TIMELINE_METRICS.densityDefault);
+    setJourneySelection(selection);
+    setJourneyIndex(0);
+    setJourneyPlaying(false);
+    setFilters({ ...emptyFilters(), [selection.kind]: [selection.id] });
+    setMatchMode('any');
+    setPanel(null);
+    setSelectedId(null);
+    setSelectedEventId(null);
+    setQuery('');
+  }
+  function toggleVariants() {
+    setVariantsShown((value) => !value);
+    endJourney();
+    if (!filters.characters.length) setFilters({ ...emptyFilters(), characters: ['peter-parker'] });
+    closeExplore();
+  }
+  function openFeatureFilm(id: string) {
+    filmFromExplore.current = true;
+    setPanel(null);
+    setSelectedEventId(null);
+    setSelectedId(id);
+    scrollToMovie(id);
+  }
+  const journeyNodes = useMemo(
+    () =>
+      journeyFilms.flatMap((movie) => {
+        const node = layout.nodes.get(movie.id);
+        return node ? [node] : [];
+      }),
+    [journeyFilms, layout],
+  );
+  const journeyNode = journeyNodes[journeyIndex];
+  useEffect(() => {
+    if (!journeyNode || !journeySelection || !viewport.current) {
+      followedJourneyStop.current = null;
+      return;
+    }
+    const stopKey = [journeySelection.kind, journeySelection.id, journeyIndex].join(':');
+    if (followedJourneyStop.current === stopKey) return;
+    followedJourneyStop.current = stopKey;
+    const view = viewport.current;
+    const player = document.querySelector('.journey-player');
+    const landscape = window.matchMedia('(orientation: landscape) and (max-height: 600px)').matches;
+    const freeWidth =
+      landscape && player
+        ? player.getBoundingClientRect().left - view.getBoundingClientRect().left - 12
+        : view.clientWidth;
+    const anchorX = Math.max(
+      20,
+      (freeWidth - layout.metrics.cardWidth) / 2 + layout.metrics.cardAnchorX,
+    );
+    view.scrollTo({
+      left: journeyNode.x - anchorX,
+      top:
+        journeyNode.y - (landscape ? (view.clientHeight + 36) / 2 : view.clientHeight * 0.36) + 36,
+      behavior: prefersReducedMotion() ? 'instant' : 'smooth',
+    });
+  }, [journeyNode, journeySelection, journeyIndex, layout.metrics]);
+  useEffect(() => {
+    if (!journeyPlaying || panel || selectedId || selectedEventId) return;
+    const timer = window.setTimeout(() => {
+      if (journeyIndex >= journeyFilms.length - 1) setJourneyPlaying(false);
+      else setJourneyIndex((index) => index + 1);
+    }, 3500);
+    return () => window.clearTimeout(timer);
+  }, [journeyPlaying, journeyIndex, journeyFilms.length, panel, selectedId, selectedEventId]);
+  useEffect(() => {
+    const pause = () => {
+      if (document.hidden) setJourneyPlaying(false);
+    };
+    document.addEventListener('visibilitychange', pause);
+    return () => document.removeEventListener('visibilitychange', pause);
+  }, []);
+
   function toggleFilter(group: FilterGroup, id: string) {
+    endJourney();
     setFilters((current) => ({
       ...current,
       [group]: current[group].includes(id)
@@ -127,6 +268,7 @@ export function Atlas() {
     }));
   }
   function addFilter(group: FilterGroup, id: string) {
+    endJourney();
     setFilters((current) =>
       current[group].includes(id) ? current : { ...current, [group]: [...current[group], id] },
     );
@@ -145,7 +287,11 @@ export function Atlas() {
   function scrollToNode(node?: { x: number; y: number }) {
     if (node && viewport.current)
       viewport.current.scrollTo({
-        left: node.x - viewport.current.clientWidth / 2,
+        left:
+          node.x -
+          viewport.current.clientWidth / 2 +
+          ('event' in node ? TIMELINE_METRICS.eventWidth : layout.metrics.cardWidth) / 2 -
+          TIMELINE_METRICS.cardAnchorX,
         top: node.y - viewport.current.clientHeight / 2 + 36,
         behavior: prefersReducedMotion() ? 'instant' : 'smooth',
       });
@@ -279,44 +425,74 @@ export function Atlas() {
     return [...eventResults.slice(0, 5), ...found.slice(0, 5), ...filmResults.slice(0, 5)];
   }, [query]);
 
+  const variantRoutes = useMemo(
+    () =>
+      filters.characters
+        .flatMap((characterId) => getCharacterVariants(matching, characterId, filters.roles))
+        .map((variant, index) => {
+          const nodes = variant.movieIds.flatMap((id) => {
+            const node = layout.nodes.get(id);
+            return node ? [node] : [];
+          });
+          return {
+            ...variant,
+            id: 'variant-' + variant.id,
+            name:
+              (actorById.get(variant.actorId)?.name ?? variant.actorId) +
+              ' · ' +
+              (universeById.get(variant.universeId)?.shortName ?? variant.universeId),
+            characterName: characterById.get(variant.characterId)?.name,
+            color: variantColors[index % variantColors.length],
+            path: threadPath(nodes),
+            count: nodes.length,
+            franchise: false,
+          };
+        }),
+    [filters.characters, filters.roles, matching, layout],
+  );
   const threads = useMemo(() => {
     const selectedThreads = [
-      ...filters.characters.map((id) => ({
-        entity: characterById.get(id),
-        kind: 'characters' as const,
-      })),
+      ...filters.characters
+        .filter(() => !variantsShown)
+        .map((id) => ({
+          entity: characterById.get(id),
+          kind: 'characters' as const,
+        })),
       ...filters.franchises.map((id) => ({
         entity: catalog.franchises.find((item) => item.id === id),
         kind: 'franchises' as const,
       })),
     ];
-    return selectedThreads.flatMap(({ entity, kind }) => {
-      if (!entity) return [];
-      const relevant = matching.filter((movie) =>
-        kind === 'characters'
-          ? movie.appearances.some(
-              (appearance) =>
-                appearance.characterId === entity.id &&
-                (!filters.roles.length || filters.roles.includes(appearance.role)),
-            )
-          : movie.franchiseIds.includes(entity.id),
-      );
-      const nodes = relevant.flatMap((movie) => {
-        const node = layout.nodes.get(movie.id);
-        return node ? [node] : [];
-      });
-      return [
-        {
-          id: `${kind}-${entity.id}`,
-          name: entity.name,
-          color: entity.color,
-          path: threadPath(nodes),
-          count: nodes.length,
-          franchise: kind === 'franchises',
-        },
-      ];
-    });
-  }, [filters, matching, layout]);
+    return [
+      ...selectedThreads.flatMap(({ entity, kind }) => {
+        if (!entity) return [];
+        const relevant = matching.filter((movie) =>
+          kind === 'characters'
+            ? movie.appearances.some(
+                (appearance) =>
+                  appearance.characterId === entity.id &&
+                  (!filters.roles.length || filters.roles.includes(appearance.role)),
+              )
+            : movie.franchiseIds.includes(entity.id),
+        );
+        const nodes = relevant.flatMap((movie) => {
+          const node = layout.nodes.get(movie.id);
+          return node ? [node] : [];
+        });
+        return [
+          {
+            id: `${kind}-${entity.id}`,
+            name: entity.name,
+            color: entity.color,
+            path: threadPath(nodes),
+            count: nodes.length,
+            franchise: kind === 'franchises',
+          },
+        ];
+      }),
+      ...(variantsShown ? variantRoutes : []),
+    ];
+  }, [filters, matching, layout, variantsShown, variantRoutes]);
 
   const lanePaths = useMemo(
     () =>
@@ -401,7 +577,11 @@ export function Atlas() {
           <Sidebar
             selectedCharacterIds={filters.characters}
             onCharacter={(id) => toggleFilter('characters', id)}
-            onClearCharacters={() => setFilters((current) => ({ ...current, characters: [] }))}
+            onClearCharacters={() => {
+              endJourney();
+              setVariantsShown(false);
+              setFilters((current) => ({ ...current, characters: [] }));
+            }}
             onUniverse={scrollToUniverse}
           />
 
@@ -441,7 +621,10 @@ export function Atlas() {
               </div>
               <button
                 className={`filter-button ${selectedCount ? 'has-filters' : ''}`}
-                onClick={() => setPanel('filters')}
+                onClick={() => {
+                  endJourney();
+                  setPanel('filters');
+                }}
               >
                 <SlidersHorizontal size={16} />
                 Filters{selectedCount > 0 && <span className="filter-count">{selectedCount}</span>}
@@ -462,6 +645,8 @@ export function Atlas() {
               <button
                 className="reset-button"
                 onClick={() => {
+                  endJourney();
+                  setVariantsShown(false);
                   setFilters(emptyFilters());
                   setQuery('');
                 }}
@@ -529,12 +714,46 @@ export function Atlas() {
               </span>
             </div>
 
-            <section className="map-section" aria-label="Interactive movie timeline">
+            {variantsShown && variantRoutes.length > 0 && (
+              <div className="variant-key" aria-label="Character variant routes">
+                <span>Variants</span>
+                {variantRoutes.map((route) => (
+                  <button
+                    key={route.id}
+                    title={route.characterName + ' · ' + route.name}
+                    onClick={() => scrollToMovie(route.movieIds[0])}
+                  >
+                    <i style={{ background: route.color }} />
+                    {route.name}
+                    <small>{route.count}</small>
+                  </button>
+                ))}
+                <button
+                  className="variant-close"
+                  aria-label="Hide character variants"
+                  onClick={() => setVariantsShown(false)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <section
+              className={'map-section' + (journeySelection ? ' has-journey' : '')}
+              aria-label="Interactive movie timeline"
+            >
               <div className="map-topline">
                 <span>
                   <span className="status-dot" /> RELEASE ORDER
                 </span>
                 <div className="map-topline-actions">
+                  <button
+                    ref={exploreButton}
+                    className="explore-button"
+                    onClick={() => setPanel('explore')}
+                    aria-label="Explore timeline features"
+                  >
+                    <Sparkles size={13} /> Explore
+                  </button>
                   <button
                     className="event-toggle"
                     aria-label="Show major events"
@@ -593,12 +812,12 @@ export function Atlas() {
                     ))}
                   </div>
                   <div
-                    className="timeline-canvas"
+                    className={'timeline-canvas is-' + layout.detailLevel}
                     style={
                       {
                         height: layout.height,
-                        '--movie-card-width': `${TIMELINE_METRICS.cardWidth}px`,
-                        '--movie-card-height': `${TIMELINE_METRICS.cardHeight}px`,
+                        '--movie-card-width': `${layout.metrics.cardWidth}px`,
+                        '--movie-card-height': `${layout.metrics.cardHeight}px`,
                         '--event-card-width': `${TIMELINE_METRICS.eventWidth}px`,
                         '--event-card-height': `${TIMELINE_METRICS.eventHeight}px`,
                       } as CSSProperties
@@ -698,6 +917,13 @@ export function Atlas() {
                             );
                           });
                         })}
+                      {journeySelection && (
+                        <JourneyTrace
+                          nodes={journeyNodes}
+                          index={journeyIndex}
+                          reducedMotion={prefersReducedMotion()}
+                        />
+                      )}
                     </svg>
                     {[...layout.eventNodes.values()].map(({ event, movie, x, y }) => (
                       <button
@@ -739,15 +965,15 @@ export function Atlas() {
                       return (
                         <button
                           key={movie.id}
-                          className={`movie-node ${matching ? 'is-match' : 'is-faded'} ${active && matching ? 'is-highlighted' : ''} ${movie.crossoverUniverseIds.length ? 'is-crossover' : ''} ${selectedId === movie.id ? 'is-selected' : ''}`}
+                          className={`movie-node ${matching ? 'is-match' : 'is-faded'} ${active && matching ? 'is-highlighted' : ''} ${movie.crossoverUniverseIds.length ? 'is-crossover' : ''} ${selectedId === movie.id ? 'is-selected' : ''} ${journeyFilm?.id === movie.id ? 'journey-current' : ''} ${watchedIds.has(movie.id) ? 'is-watched' : ''}`}
                           data-movie-id={movie.id}
                           data-matching={matching}
-                          aria-label={`${movie.title}, ${movie.releaseDate.slice(0, 4)}${movie.crossoverUniverseIds.length ? ', crossover' : ''}${active ? (matching ? ', matches filters' : ', outside filters') : ''}`}
+                          aria-label={`${movie.title}, ${movie.releaseDate.slice(0, 4)}${movie.crossoverUniverseIds.length ? ', crossover' : ''}${watchedIds.has(movie.id) ? ', watched' : ''}${active ? (matching ? ', matches filters' : ', outside filters') : ''}`}
                           aria-pressed={selectedId === movie.id}
                           title={`${movie.title} · ${formatDate(movie.releaseDate)}`}
                           style={{
                             left: node.x - TIMELINE_METRICS.cardAnchorX,
-                            top: node.y - TIMELINE_METRICS.cardHeight / 2,
+                            top: node.y - layout.metrics.cardHeight / 2,
                             ...colorStyle(color),
                           }}
                           onClick={() => setSelectedId(movie.id)}
@@ -755,10 +981,26 @@ export function Atlas() {
                           <span className="station-dot">
                             {movie.crossoverUniverseIds.length > 0 && <span />}
                           </span>
-                          <MoviePoster movieId={movie.id} title={movie.title} />
+                          {layout.detailLevel !== 'overview' && (
+                            <MoviePoster
+                              movieId={movie.id}
+                              title={movie.title}
+                              variant={layout.detailLevel === 'detail' ? 'map-detail' : 'thumbnail'}
+                            />
+                          )}
                           <span className="movie-label">
                             <span>{movie.title}</span>
+                            {layout.detailLevel === 'detail' && (
+                              <small className="movie-release">
+                                {formatDate(movie.releaseDate)}
+                              </small>
+                            )}
                           </span>
+                          {watchedIds.has(movie.id) && (
+                            <span className="watched-mark" role="img" aria-label="Watched">
+                              <Check size={11} />
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -775,6 +1017,37 @@ export function Atlas() {
                   </button>
                 </div>
               )}
+              {journeySelection && journeyFilm && (
+                <JourneyPlayer
+                  selection={journeySelection}
+                  movie={journeyFilm}
+                  index={journeyIndex}
+                  total={journeyFilms.length}
+                  playing={journeyPlaying && !panel && !selectedId && !selectedEventId}
+                  onPrevious={() => {
+                    setJourneyPlaying(false);
+                    setJourneyIndex((index) => Math.max(0, index - 1));
+                  }}
+                  onNext={() => {
+                    setJourneyPlaying(false);
+                    setJourneyIndex((index) => Math.min(journeyFilms.length - 1, index + 1));
+                  }}
+                  onPlay={() => {
+                    if (journeyIndex === journeyFilms.length - 1) {
+                      setJourneyIndex(0);
+                      setJourneyPlaying(true);
+                    } else setJourneyPlaying((value) => !value);
+                  }}
+                  onClose={() => {
+                    endJourney();
+                    focusExplore();
+                  }}
+                  onMovie={() => {
+                    setJourneyPlaying(false);
+                    setSelectedId(journeyFilm.id);
+                  }}
+                />
+              )}
               <div className="map-controls">
                 <button
                   className="icon-button"
@@ -788,7 +1061,9 @@ export function Atlas() {
                 >
                   <Minus size={16} />
                 </button>
-                <span>{Math.round((density / TIMELINE_METRICS.densityDefault) * 100)}%</span>
+                <span title={layout.detailLevel + ' view'}>
+                  {Math.round((density / TIMELINE_METRICS.densityDefault) * 100)}%
+                </span>
                 <button
                   className="icon-button"
                   aria-label="Zoom in timeline"
@@ -890,6 +1165,64 @@ export function Atlas() {
         </div>
       </div>
 
+      {panel === 'explore' && (
+        <Dialog title="Explore the atlas" onClose={closeExplore} className="explore-dialog">
+          <div className="explore-options">
+            <button onClick={() => setPanel('journey')}>
+              <Play />
+              <span>
+                <strong>Follow a journey</strong>
+                <small>Play through a character or actor’s filmography.</small>
+              </span>
+              <ArrowRight size={18} />
+            </button>
+            <button onClick={toggleVariants} aria-pressed={variantsShown}>
+              <GitBranch />
+              <span>
+                <strong>
+                  {variantsShown ? 'Combine character variants' : 'Separate character variants'}
+                </strong>
+                <small>
+                  {filters.characters.length
+                    ? 'Give each actor and universe a distinct path.'
+                    : 'Start with the different Spider-Men.'}
+                </small>
+              </span>
+              {variantsShown ? <Check size={18} /> : <ArrowRight size={18} />}
+            </button>
+            <button onClick={() => setPanel('connect')}>
+              <Route />
+              <span>
+                <strong>Connect these films</strong>
+                <small>Find the shared actors and characters between two films.</small>
+              </span>
+              <ArrowRight size={18} />
+            </button>
+            <button onClick={() => setPanel('watch')}>
+              <CircleCheck />
+              <span>
+                <strong>Your watch history</strong>
+                <small>
+                  {watch.watchedIds.length} / {movies.length} watched · see what’s left.
+                </small>
+              </span>
+              <ArrowRight size={18} />
+            </button>
+            <p>Zoom out for an overview. Zoom in for larger posters and complete titles.</p>
+          </div>
+        </Dialog>
+      )}
+      {panel === 'journey' && <JourneyPicker onClose={closeExplore} onStart={startJourney} />}
+      {panel === 'connect' && <ConnectionGame onClose={closeExplore} onMovie={openFeatureFilm} />}
+      {panel === 'watch' && (
+        <WatchProgress
+          watchedIds={watch.watchedIds}
+          onToggleWatched={watch.toggleWatched}
+          onClose={closeExplore}
+          onMovie={openFeatureFilm}
+          storageAvailable={watch.storageAvailable}
+        />
+      )}
       {panel === 'filters' && (
         <FilterDialog
           filters={filters}
@@ -970,10 +1303,13 @@ export function Atlas() {
       {selectedMovie && (
         <MovieDetails
           movie={selectedMovie}
-          onClose={() => setSelectedId(null)}
+          watched={watchedIds.has(selectedMovie.id)}
+          watchReady={watch.ready}
+          onToggleWatched={() => watch.toggleWatched(selectedMovie.id)}
+          onClose={closeMovie}
           onCharacter={(id) => {
             addFilter('characters', id);
-            setSelectedId(null);
+            closeMovie();
           }}
         />
       )}
@@ -1203,10 +1539,16 @@ function FilterDialog({
 
 function MovieDetails({
   movie,
+  watched,
+  watchReady,
+  onToggleWatched,
   onClose,
   onCharacter,
 }: {
   movie: Movie;
+  watched: boolean;
+  watchReady: boolean;
+  onToggleWatched: () => void;
   onClose: () => void;
   onCharacter: (id: string) => void;
 }) {
@@ -1239,6 +1581,16 @@ function MovieDetails({
           <span className="cover-station" />
         </div>
         <div className="detail-body">
+          <p className="film-synopsis">{filmSynopses[movie.id]?.text}</p>
+          <button
+            className={'film-watch-button' + (watched ? ' watched' : '')}
+            aria-pressed={watched}
+            disabled={!watchReady}
+            onClick={onToggleWatched}
+          >
+            <CircleCheck size={17} />
+            {watched ? 'Watched' : 'Mark watched'}
+          </button>
           <div className="detail-date">
             <span>US THEATRICAL RELEASE</span>
             <strong>{formatDate(movie.releaseDate)}</strong>
@@ -1319,6 +1671,11 @@ function MovieDetails({
           )}
           <div className="source-links">
             <h4>Sources</h4>
+            {filmSynopses[movie.id] && (
+              <a href={filmSynopses[movie.id].sourceUrl} target="_blank" rel="noopener noreferrer">
+                Synopsis source <ArrowUpRight size={12} />
+              </a>
+            )}
             {posters[movie.id] && (
               <a href={posters[movie.id].sourceUrl} target="_blank" rel="noopener noreferrer">
                 Poster artwork <ArrowUpRight size={12} />

@@ -15,11 +15,9 @@ const {
   cardHeight,
   cardGap,
   cardAnchorX,
-  eventWidth,
   eventHeight,
   eventGap,
   eventTrackSpacing,
-  trackSpacing,
   laneLabelHeight,
   lanePadding,
   minLaneHeight,
@@ -96,6 +94,7 @@ test('layout is deterministic when input movies are reordered, including identic
   const first = buildLayout(movies, universes, 220);
   const second = buildLayout([...movies].reverse(), universes, 220);
   assert.deepEqual(first, second);
+  const { trackSpacing } = first.metrics;
   assert.equal(first.nodes.get('a')!.y + trackSpacing, first.nodes.get('b')!.y);
   assert.equal(first.nodes.get('b')!.y + trackSpacing, first.nodes.get('c')!.y);
   assert.equal(first.nodes.get('a')!.y, first.nodes.get('d')!.y);
@@ -225,6 +224,7 @@ test('the complete collection stays collision-free and date-proportional at ever
   const baseline = buildLayout(collection, collectionUniverses, densityDefault);
   for (const scale of zoomScales) {
     const layout = buildLayout(collection, collectionUniverses, scale);
+    const { cardWidth, cardHeight, cardGap } = layout.metrics;
     assert.equal(layout.nodes.size, collection.length);
     for (const lane of layout.lanes) {
       const nodes = [...layout.nodes.values()].filter(
@@ -283,6 +283,7 @@ function timelineEvent(
 }
 
 function assertEventLayoutBounds(layout: ReturnType<typeof buildLayout>) {
+  const { cardWidth, cardHeight, eventWidth, eventHeight, eventGap } = layout.metrics;
   for (const lane of layout.lanes) {
     const laneTop = lane.y - lane.height / 2;
     const laneBottom = lane.y + lane.height / 2;
@@ -519,4 +520,59 @@ test('default geometry meets the compactness budget without sacrificing the larg
   assert.equal(zoomScales.at(-1), densityMax);
   assert.equal((densityMax - densityMin) % densityStep, 0, 'zoom limits must align with the step');
   assertEventLayoutBounds(layout);
+});
+
+test('semantic zoom exposes exact effective card dimensions at both boundaries', () => {
+  const films = [movie('first', '2020-01-01'), movie('second', '2020-01-01')];
+  for (const [scale, detailLevel, width, height, spacing] of [
+    [90, 'overview', 156, 40, 42],
+    [110, 'overview', 156, 40, 42],
+    [110.01, 'standard', 192, 40, 42],
+    [130, 'standard', 192, 40, 42],
+    [189.99, 'standard', 192, 40, 42],
+    [190, 'detail', 296, 96, 100],
+    [250, 'detail', 296, 96, 100],
+  ] as const) {
+    const layout = buildLayout(films, universes, scale);
+    assert.equal(layout.detailLevel, detailLevel);
+    assert.equal(layout.metrics.cardWidth, width);
+    assert.equal(layout.metrics.cardHeight, height);
+    assert.equal(layout.metrics.trackSpacing, spacing);
+    assert.equal(layout.nodes.get('second')!.y - layout.nodes.get('first')!.y, spacing);
+    assert.equal(layout.nodes.get('first')!.x, axisPadding);
+    for (const key of [
+      'eventWidth',
+      'eventHeight',
+      'eventGap',
+      'eventTrackSpacing',
+      'cardAnchorX',
+      'densityDefault',
+      'densityMin',
+      'densityMax',
+      'densityStep',
+    ] as const) {
+      assert.equal(layout.metrics[key], TIMELINE_METRICS[key]);
+    }
+    assertEventLayoutBounds(layout);
+  }
+});
+
+test('default geometry stays exact while semantic levels change the card footprint', () => {
+  const standard = buildLayout(collection, collectionUniverses, densityDefault, timelineEvents);
+  assert.equal(standard.detailLevel, 'standard');
+  assert.deepEqual(standard.metrics, TIMELINE_METRICS);
+  assert.equal(standard.width, 4030);
+  assert.equal(standard.height, 1598);
+  assert.equal(standard.lanes.find((lane) => lane.id === 'mcu')!.height, 390);
+  const overview = buildLayout(collection, collectionUniverses, densityMin, timelineEvents);
+  const detail = buildLayout(collection, collectionUniverses, 190, timelineEvents);
+  assert.ok(overview.metrics.cardWidth < standard.metrics.cardWidth);
+  assert.ok(detail.metrics.cardHeight >= 66 + 2, 'detailed cards must hold a 66px poster');
+  assert.ok(
+    detail.metrics.cardHeight >= 18 * 1.1 * 3 + 14 * 1.2 + 2,
+    'detailed cards must hold three title lines plus a release year',
+  );
+  for (const layout of [overview, standard, detail]) {
+    assertEventLayoutBounds(layout);
+  }
 });
