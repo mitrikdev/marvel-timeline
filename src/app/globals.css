@@ -244,6 +244,16 @@ button:hover:not(:disabled) {
   color: #828b9d;
   font-size: 11px;
 }
+.sidebar-clear {
+  min-height: 24px;
+  padding: 0 3px;
+  border-radius: 4px;
+  color: #d7a3af;
+  font-size: 11px;
+}
+.sidebar-clear:hover:not(:disabled) {
+  background: #ffffff09;
+}
 .sidebar-expand {
   width: 24px;
   height: 24px;

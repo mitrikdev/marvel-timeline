@@ -419,6 +419,7 @@ export function Atlas() {
           <Sidebar
             selectedCharacterIds={filters.characters}
             onCharacter={(id) => toggleFilter('characters', id)}
+            onClearCharacters={() => setFilters((current) => ({ ...current, characters: [] }))}
             onUniverse={scrollToUniverse}
           />
 

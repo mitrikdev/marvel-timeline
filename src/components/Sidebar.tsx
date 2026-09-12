@@ -41,10 +41,12 @@ const normalize = (value: string) =>
 export function Sidebar({
   selectedCharacterIds,
   onCharacter,
+  onClearCharacters,
   onUniverse,
 }: {
   selectedCharacterIds: string[];
   onCharacter: (id: string) => void;
+  onClearCharacters: () => void;
   onUniverse: (id: string) => void;
 }) {
   const [universeQuery, setUniverseQuery] = useState('');
@@ -150,6 +152,14 @@ export function Sidebar({
             {characterSearch ? `${visibleCharacterCount} / ` : ''}
             {characters.length}
           </span>
+          <button
+            className="sidebar-clear"
+            aria-label="Clear character selections"
+            disabled={selectedCharacterIds.length === 0}
+            onClick={onClearCharacters}
+          >
+            Clear
+          </button>
           {!characterSearch && (
             <button
               className="sidebar-expand"
