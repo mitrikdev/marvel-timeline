@@ -1,4 +1,5 @@
 import { characters } from './index';
+import { infinityStones } from './infinity-stones';
 import { mcuVillainIds } from './identities-mcu';
 import { legacyVillainIds } from './identities-legacy';
 
@@ -11,6 +12,11 @@ export type CharacterGroup = {
 // These are primary navigation homes across film continuities and team lineups.
 // A character can have other affiliations; sharing a film is not a membership rule.
 const coreGroups: CharacterGroup[] = [
+  {
+    id: 'infinity-stones',
+    name: 'Infinity Stones',
+    characterIds: infinityStones.map((stone) => stone.id),
+  },
   {
     id: 'avengers',
     name: 'Avengers & allies',

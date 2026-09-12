@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Play, Pause, SkipBack, SkipForward, X, ArrowUpRight, Search } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, X, ArrowUpRight, Search, Gem } from 'lucide-react';
 import { catalog, movies, actorById, characterById } from '@/data';
 import { getJourneyMovies, type JourneySelection } from '@/lib/journeys';
 import type { Movie } from '@/data/types';
@@ -15,23 +15,34 @@ export function JourneyPicker({
   onClose: () => void;
   onStart: (selection: JourneySelection) => void;
 }) {
-  const [kind, setKind] = useState<JourneySelection['kind']>('characters');
+  const [kind, setKind] = useState<'characters' | 'actors' | 'stones'>('characters');
+  const selectionKind = kind === 'stones' ? 'characters' : kind;
   const [query, setQuery] = useState('');
-  const options = catalog[kind]
+  const candidates =
+    kind === 'actors'
+      ? catalog.actors
+      : catalog.characters.filter(
+          (entity) => (entity.kind === 'infinity-stone') === (kind === 'stones'),
+        );
+  const options = candidates
     .filter((entity) =>
       [entity.name, ...('realName' in entity ? [entity.realName] : []), ...(entity.aliases ?? [])]
         .join(' ')
         .toLowerCase()
         .includes(query.toLowerCase()),
     )
-    .map((entity) => ({ entity, count: getJourneyMovies(movies, { kind, id: entity.id }).length }))
+    .map((entity) => ({
+      entity,
+      count: getJourneyMovies(movies, { kind: selectionKind, id: entity.id }).length,
+    }))
     .filter(({ count }) => count > 0)
     .sort((a, b) => b.count - a.count || a.entity.name.localeCompare(b.entity.name));
   return (
     <Dialog title="Follow a journey" onClose={onClose} className="journey-dialog">
       <div className="journey-picker">
         <p>
-          Step through a filmography in release order. Play the route or explore one stop at a time.
+          Follow a character, actor, or Infinity Stone in release order. Play the route or explore
+          one stop at a time.
         </p>
         <div className="journey-kind">
           <button aria-pressed={kind === 'characters'} onClick={() => setKind('characters')}>
@@ -40,27 +51,40 @@ export function JourneyPicker({
           <button aria-pressed={kind === 'actors'} onClick={() => setKind('actors')}>
             Actors
           </button>
+          <button aria-pressed={kind === 'stones'} onClick={() => setKind('stones')}>
+            Infinity Stones
+          </button>
         </div>
         <label className="feature-search">
           <Search size={17} />
           <input
             type="search"
             aria-label="Find a journey"
-            placeholder={'Find a ' + (kind === 'characters' ? 'character' : 'actor') + '…'}
+            placeholder={
+              'Find ' +
+              (kind === 'stones'
+                ? 'a Stone or artifact'
+                : 'a ' + (kind === 'characters' ? 'character' : 'actor')) +
+              '…'
+            }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
         <div className="journey-options">
           {options.map(({ entity, count }) => (
-            <button key={entity.id} onClick={() => onStart({ kind, id: entity.id })}>
+            <button key={entity.id} onClick={() => onStart({ kind: selectionKind, id: entity.id })}>
               <span className="journey-avatar" style={{ color: entity.color }}>
-                {entity.name
-                  .split(' / ')[0]
-                  .split(' ')
-                  .map((w) => w[0])
-                  .slice(0, 2)
-                  .join('')}
+                {kind === 'stones' ? (
+                  <Gem size={20} />
+                ) : (
+                  entity.name
+                    .split(' / ')[0]
+                    .split(' ')
+                    .map((w) => w[0])
+                    .slice(0, 2)
+                    .join('')
+                )}
               </span>
               <span>
                 {entity.name}
@@ -100,6 +124,10 @@ export function JourneyPlayer({
   onMovie: () => void;
 }) {
   const entity = (selection.kind === 'characters' ? characterById : actorById).get(selection.id);
+  const stoneStop =
+    selection.kind === 'characters'
+      ? movie.stoneAppearances?.find((appearance) => appearance.stoneId === selection.id)
+      : undefined;
   const roles = [
     ...new Set(
       movie.appearances
@@ -126,8 +154,11 @@ export function JourneyPlayer({
         <MoviePoster movieId={movie.id} title={movie.title} variant="search" />
         <span>
           <strong>{movie.title}</strong>
-          <small>
-            {movie.releaseDate.slice(0, 4)} · {roles.join(', ')}
+          <small
+            className={stoneStop ? 'journey-stone-summary' : undefined}
+            title={stoneStop?.summary}
+          >
+            {movie.releaseDate.slice(0, 4)} · {stoneStop?.summary ?? roles.join(', ')}
           </small>
         </span>
         <button aria-label="Open journey film details" onClick={onMovie}>
@@ -161,37 +192,45 @@ export function JourneyTrace({
   nodes,
   index,
   reducedMotion,
+  color,
 }: {
   nodes: Array<{ x: number; y: number }>;
   index: number;
   reducedMotion: boolean;
+  color?: string;
 }) {
   const current = nodes[index];
   if (!current) return null;
   const segment = index > 0 ? threadPath(nodes.slice(index - 1, index + 1)) : '';
   return (
     <g className="journey-trace">
-      <path d={threadPath(nodes)} fill="none" stroke="#d6efff" strokeWidth="2" opacity=".25" />
+      <path
+        d={threadPath(nodes)}
+        fill="none"
+        stroke={color ?? '#d6efff'}
+        strokeWidth="2"
+        opacity=".25"
+      />
       <path
         d={threadPath(nodes.slice(0, index + 1))}
         fill="none"
-        stroke="#c7f3ff"
+        stroke={color ?? '#c7f3ff'}
         strokeWidth="4"
         strokeLinecap="round"
       />
       {index > 0 && !reducedMotion ? (
-        <circle key={index} r="7" fill="#eaffff" className="journey-traveler">
+        <circle key={index} r="7" fill={color ?? '#eaffff'} className="journey-traveler">
           <animateMotion dur="1s" path={segment} fill="freeze" />
         </circle>
       ) : (
-        <circle cx={current.x} cy={current.y} r="7" fill="#eaffff" />
+        <circle cx={current.x} cy={current.y} r="7" fill={color ?? '#eaffff'} />
       )}
       <circle
         cx={current.x}
         cy={current.y}
         r="12"
         fill="none"
-        stroke="#bfefff"
+        stroke={color ?? '#bfefff'}
         strokeWidth="2"
         className="journey-pulse"
       />

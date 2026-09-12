@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from 'react';
 import {
   Check,
+  Gem,
   ChevronDown,
   ChevronRight,
   ChevronsDown,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { characterById, characters, movies, universes } from '@/data';
 import { characterGroups } from '@/data/character-groups';
+import { getCharacterAppearances } from '@/lib/appearances';
 
 const characterFilmCounts = new Map<string, number>();
 const universeFilmCounts = new Map<string, number>();
@@ -20,7 +22,9 @@ for (const movie of movies) {
     movie.primaryUniverseId,
     (universeFilmCounts.get(movie.primaryUniverseId) ?? 0) + 1,
   );
-  for (const id of new Set(movie.appearances.map((appearance) => appearance.characterId))) {
+  for (const id of new Set(
+    getCharacterAppearances(movie).map((appearance) => appearance.characterId),
+  )) {
     characterFilmCounts.set(id, (characterFilmCounts.get(id) ?? 0) + 1);
   }
 }
@@ -242,7 +246,15 @@ export function Sidebar({
                         title={character.name}
                         onClick={() => onCharacter(character.id)}
                       >
-                        <span className="sidebar-dot" style={{ background: character.color }} />
+                        {character.kind === 'infinity-stone' ? (
+                          <Gem
+                            className="sidebar-stone"
+                            size={12}
+                            style={{ color: character.color }}
+                          />
+                        ) : (
+                          <span className="sidebar-dot" style={{ background: character.color }} />
+                        )}
                         <span className="sidebar-row-name">{character.name}</span>
                         <span className="sidebar-row-count">{count}</span>
                         {selected && <Check className="sidebar-row-check" size={12} />}

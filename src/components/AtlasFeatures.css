@@ -516,3 +516,29 @@
     display: none;
   }
 }
+
+.sidebar-stone {
+  flex-shrink: 0;
+}
+.film-stones {
+  margin-bottom: 24px;
+}
+.stone-list .cast-name small {
+  line-height: 1.45;
+}
+.journey-kind > button {
+  flex: 1;
+  min-width: 0;
+  padding-inline: 7px;
+}
+.journey-stone-summary {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .journey-stone-summary {
+    -webkit-line-clamp: 1;
+  }
+}

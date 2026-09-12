@@ -1,13 +1,14 @@
 import type { Movie, Role } from '../data/types';
+import { getCharacterAppearances } from './appearances';
 export type JourneySelection = { kind: 'characters' | 'actors'; id: string };
 export function getJourneyMovies(movies: readonly Movie[], selection: JourneySelection): Movie[] {
   return movies
     .filter((movie) =>
-      movie.appearances.some(
-        (appearance) =>
-          (selection.kind === 'characters' ? appearance.characterId : appearance.actorId) ===
-          selection.id,
-      ),
+      selection.kind === 'characters'
+        ? getCharacterAppearances(movie).some(
+            (appearance) => appearance.characterId === selection.id,
+          )
+        : movie.appearances.some((appearance) => appearance.actorId === selection.id),
     )
     .toSorted((a, b) => a.releaseDate.localeCompare(b.releaseDate) || a.id.localeCompare(b.id));
 }

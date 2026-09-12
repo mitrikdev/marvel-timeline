@@ -23,6 +23,7 @@ import {
   Diamond,
   Expand,
   GitBranch,
+  Gem,
   Info,
   Move,
   Plus,
@@ -38,6 +39,7 @@ import {
 } from 'lucide-react';
 import {
   actorById,
+  infinityStoneById,
   catalog,
   characterById,
   firstYear,
@@ -58,6 +60,7 @@ import { Sidebar } from './Sidebar';
 import { timelineEvents } from '@/data/events';
 import { filmSynopses } from '@/data/synopses';
 import { characterGroups } from '@/data/character-groups';
+import { getCharacterAppearances } from '@/lib/appearances';
 import { getJourneyMovies, getCharacterVariants, type JourneySelection } from '@/lib/journeys';
 import { useWatchHistory } from '@/hooks/useWatchHistory';
 import { JourneyPicker, JourneyPlayer, JourneyTrace } from './Journey';
@@ -422,7 +425,14 @@ export function Atlas() {
             .toLowerCase()
             .includes(q)
         ) {
-          found.push({ ...entity, type: group.key, detail: group.label });
+          found.push({
+            ...entity,
+            type: group.key,
+            detail:
+              infinityStoneById.has(entity.id) && group.key === 'characters'
+                ? 'Infinity Stone'
+                : group.label,
+          });
         }
       }
     }
@@ -475,7 +485,7 @@ export function Atlas() {
   const threads = useMemo(() => {
     const selectedThreads = [
       ...filters.characters
-        .filter(() => !variantsShown)
+        .filter((id) => !variantsShown || infinityStoneById.has(id))
         .map((id) => ({
           entity: characterById.get(id),
           kind: 'characters' as const,
@@ -490,7 +500,7 @@ export function Atlas() {
         if (!entity) return [];
         const relevant = matching.filter((movie) =>
           kind === 'characters'
-            ? movie.appearances.some(
+            ? getCharacterAppearances(movie).some(
                 (appearance) =>
                   appearance.characterId === entity.id &&
                   (!filters.roles.length || filters.roles.includes(appearance.role)),
@@ -972,6 +982,11 @@ export function Atlas() {
                         })}
                       {journeySelection && (
                         <JourneyTrace
+                          color={
+                            journeySelection?.kind === 'characters'
+                              ? infinityStoneById.get(journeySelection.id)?.color
+                              : undefined
+                          }
                           nodes={journeyNodes}
                           index={journeyIndex}
                           reducedMotion={prefersReducedMotion()}
@@ -1009,7 +1024,7 @@ export function Atlas() {
                       const characterColor = filters.characters
                         .map((id) => characterById.get(id))
                         .find((character) =>
-                          movie.appearances.some(
+                          getCharacterAppearances(movie).some(
                             (appearance) => appearance.characterId === character?.id,
                           ),
                         )?.color;
@@ -1230,7 +1245,7 @@ export function Atlas() {
               <Play />
               <span>
                 <strong>Follow a journey</strong>
-                <small>Play through a character or actor’s filmography.</small>
+                <small>Follow a character, actor, or Infinity Stone.</small>
               </span>
               <ArrowRight size={18} />
             </button>
@@ -1678,6 +1693,38 @@ function MovieDetails({
               </p>
             </div>
           )}
+          {!!movie.stoneAppearances?.length && (
+            <section className="film-stones" aria-label="Infinity Stones in this film">
+              <div className="cast-heading">
+                <h4>Infinity Stones</h4>
+                <span>
+                  Select to follow a Stone <ArrowDown size={11} />
+                </span>
+              </div>
+              <div className="cast-list stone-list">
+                {movie.stoneAppearances.map((appearance) => {
+                  const stone = infinityStoneById.get(appearance.stoneId);
+                  if (!stone) return null;
+                  return (
+                    <button
+                      key={stone.id}
+                      onClick={() => onCharacter(stone.id)}
+                      style={colorStyle(stone.color)}
+                    >
+                      <span className="cast-monogram">
+                        <Gem size={17} />
+                      </span>
+                      <span className="cast-name">
+                        <strong>{stone.name}</strong>
+                        <small>{appearance.summary}</small>
+                      </span>
+                      <Plus size={14} />
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           <div className="cast-heading">
             <h4>Characters & cast</h4>
             <span>
@@ -1729,6 +1776,17 @@ function MovieDetails({
                 Poster artwork <ArrowUpRight size={12} />
               </a>
             )}
+            {[
+              ...new Set(
+                (movie.stoneAppearances ?? []).flatMap(
+                  (appearance) => infinityStoneById.get(appearance.stoneId)?.sourceUrls ?? [],
+                ),
+              ),
+            ].map((url, index) => (
+              <a key={'stone-' + url} href={url} target="_blank" rel="noopener noreferrer">
+                Infinity Stones source {index + 1} <ArrowUpRight size={12} />
+              </a>
+            ))}
             {movie.sourceUrls.map((url, index) => (
               <a key={url} href={url} target="_blank" rel="noopener noreferrer">
                 {new URL(url).hostname.replace(/^www\./, '')}

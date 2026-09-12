@@ -2,7 +2,8 @@ import { mcu } from './mcu';
 import { legacy } from './legacy';
 import { mcuCharacterIdentities } from './identities-mcu';
 import { legacyCharacterIdentities } from './identities-legacy';
-import type { Character, Entity, Universe } from './types';
+import type { Character, Entity, Movie, Universe } from './types';
+import { infinityStones, stoneAppearances } from './infinity-stones';
 
 export const universes: Universe[] = [
   { id: 'mcu', name: 'Marvel Cinematic Universe', shortName: 'MCU', color: '#e84455' },
@@ -85,9 +86,15 @@ const studioNames: Record<string, string> = {
   lionsgate: 'Lionsgate',
 };
 
-export const movies = [...mcu.movies, ...legacy.movies].sort((a, b) =>
-  a.releaseDate.localeCompare(b.releaseDate),
-);
+export const movies: Movie[] = [...mcu.movies, ...legacy.movies]
+  .map((movie) => {
+    const stones = stoneAppearances
+      .filter((appearance) => appearance.movieId === movie.id)
+      .map(({ stoneId, role, summary }) => ({ stoneId, role, summary }));
+    return stones.length ? { ...movie, stoneAppearances: stones } : movie;
+  })
+  .sort((a, b) => a.releaseDate.localeCompare(b.releaseDate));
+export const infinityStoneById = new Map(infinityStones.map((stone) => [stone.id, stone]));
 const distinct = <T extends Entity>(items: T[]) => [
   ...new Map(items.map((item) => [item.id, item])).values(),
 ];
@@ -122,7 +129,7 @@ const characterOverrides: Record<string, { name: string; color: string; aliases?
 };
 const characterIdentities = { ...legacyCharacterIdentities, ...mcuCharacterIdentities };
 export const characters: Character[] = distinct([...mcu.characters, ...legacy.characters])
-  .map((character, index) => {
+  .map<Character>((character, index) => {
     const override = characterOverrides[character.id];
     const identity = characterIdentities[character.id];
     const identityName = identity?.name ?? override?.name ?? character.name;
@@ -143,6 +150,7 @@ export const characters: Character[] = distinct([...mcu.characters, ...legacy.ch
       ],
     };
   })
+  .concat(infinityStones.map((stone) => ({ ...stone, kind: 'infinity-stone' as const })))
   .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 export const actors = distinct([...mcu.actors, ...legacy.actors]).sort((a, b) =>
   a.name.localeCompare(b.name),

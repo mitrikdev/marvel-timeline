@@ -1,4 +1,5 @@
 import type { Filters, MatchMode, Movie } from '../data/types';
+import { getCharacterAppearances } from './appearances';
 
 /** A fresh filter object keeps separate callers from sharing mutable arrays. */
 export function emptyFilters(): Filters {
@@ -41,10 +42,14 @@ export function matchesMovie(movie: Movie, filters: Filters, mode: MatchMode): b
     if (!Number.isFinite(year) || year < from || year > through) return false;
   }
 
-  const appearances =
+  const actorAppearances =
     filters.roles.length > 0
       ? movie.appearances.filter((appearance) => filters.roles.includes(appearance.role))
       : movie.appearances;
+
+  const appearances = getCharacterAppearances(movie).filter(
+    (appearance) => !filters.roles.length || filters.roles.includes(appearance.role),
+  );
 
   // Role-only filters and roles combined with studio/franchise/universe filters
   // still require an actual appearance in one of the selected roles.
@@ -54,7 +59,7 @@ export function matchesMovie(movie: Movie, filters: Filters, mode: MatchMode): b
     ...filters.characters.map((id) =>
       appearances.some((appearance) => appearance.characterId === id),
     ),
-    ...filters.actors.map((id) => appearances.some((appearance) => appearance.actorId === id)),
+    ...filters.actors.map((id) => actorAppearances.some((appearance) => appearance.actorId === id)),
     ...filters.franchises.map((id) => movie.franchiseIds.includes(id)),
     ...filters.universes.map(
       (id) => movie.primaryUniverseId === id || movie.crossoverUniverseIds.includes(id),

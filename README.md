@@ -17,7 +17,7 @@ Open http://127.0.0.1:3000. The data, fonts, and poster artwork are local; no AP
 
 - Drag or scroll the map in either direction; keyboard users can focus it and use arrow keys.
 - Filter sidebar universes by name, or browse every character in compact, collapsible team groups, including Villains & rivals. Known hero and villain identities appear beside their alter egos, such as Spider-Man / Miles Morales and Prowler / Aaron Davis. Character search also matches real names, aliases, and team names.
-- Choose a character, actor, franchise/team, universe, studio, year range, or appearance role.
+- Choose a character, Infinity Stone, actor, franchise/team, universe, studio, year range, or appearance role. The six Stones have their own group, colored paths, and searchable artifact names such as Tesseract and Aether.
 - ANY matches at least one selected entity. ALL requires every selected entity. Year range (inclusive) and role constraints apply in both modes.
 - Movie positions stay fixed when filters change. + / − moves between compact overview, standard cards, and detailed cards with larger posters and full titles, while preserving the center date.
 - Posters appear beside timeline titles, in search, and in related-film links. Click a film for a larger poster, a short spoiler-light synopsis, cast, continuity, crossover details, curation notes, and source links.
@@ -31,7 +31,7 @@ Open http://127.0.0.1:3000. The data, fonts, and poster artwork are local; no AP
 
 Open **Discover** above the map for three tools:
 
-- **Follow a journey:** play through a character or actor’s appearances in release order. The map follows each stop; pause, step through films, or open the current film’s details.
+- **Follow a journey:** play through a character, actor, or Infinity Stone’s appearances in release order. The Infinity Stones tab offers all six routes; each stop explains the artifact, holder, or depicted event. The map follows each stop; pause, step through films, or open the current film’s details.
 - **Separate character variants:** trace each actor and originating universe separately, including the points where variants meet in crossover films.
 - **Connect these films:** choose two films and reveal a shortest chain of shared characters or actors. Each link explains the connection.
 
@@ -58,6 +58,7 @@ The tests cover dataset integrity, exact film scope, date ordering, variant refe
 - `src/data/character-groups.ts`: primary team/squad navigation groups and an Other characters section for the rest of the catalog.
 - `src/data/posters.ts` and `public/posters/`: local, optimized promotional cover artwork with source attribution in `docs/sources-posters.md`.
 - `src/data/synopses.ts`: original short film synopses, with source attribution in `docs/sources-synopses.md`.
+- `src/data/infinity-stones.ts`: six artifacts and curated film stops, including labeled visions, credits, and borrowed time-heist versions. Stones use separate story appearances, not invented actor credits; see `docs/sources-infinity-stones.md`.
 - `src/data/events.ts`: major story events and film-series milestones, with related movie ids and sources.
 - `docs/sources-mcu.md` and `docs/sources-legacy.md`: source and curation notes.
 
