@@ -71,6 +71,7 @@ const WatchProgress = dynamic(() =>
 const characterGroupNames = new Map(
   characterGroups.flatMap((group) => group.characterIds.map((id) => [id, group.name] as const)),
 );
+const FILM_MARKER_SIZE = 32;
 const variantColors = [
   '#ffad7c',
   '#77d9f0',
@@ -113,6 +114,7 @@ export function Atlas() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [showEvents, setShowEvents] = useState(true);
+  const [showFilmLabels, setShowFilmLabels] = useState(true);
   const [panel, setPanel] = useState<
     'filters' | 'about' | 'discover' | 'journey' | 'connect' | 'watch' | null
   >(null);
@@ -248,7 +250,9 @@ export function Atlas() {
         : view.clientWidth;
     const anchorX = Math.max(
       20,
-      (freeWidth - layout.metrics.cardWidth) / 2 + layout.metrics.cardAnchorX,
+      showFilmLabels
+        ? (freeWidth - layout.metrics.cardWidth) / 2 + layout.metrics.cardAnchorX
+        : freeWidth / 2,
     );
     view.scrollTo({
       left: journeyNode.x - anchorX,
@@ -256,7 +260,7 @@ export function Atlas() {
         journeyNode.y - (landscape ? (view.clientHeight + 36) / 2 : view.clientHeight * 0.36) + 36,
       behavior: prefersReducedMotion() ? 'instant' : 'smooth',
     });
-  }, [journeyNode, journeySelection, journeyIndex, layout.metrics]);
+  }, [journeyNode, journeySelection, journeyIndex, layout.metrics, showFilmLabels]);
   useEffect(() => {
     if (!journeyPlaying || panel || selectedId || selectedEventId) return;
     const timer = window.setTimeout(() => {
@@ -305,8 +309,11 @@ export function Atlas() {
         left:
           node.x -
           viewport.current.clientWidth / 2 +
-          ('event' in node ? TIMELINE_METRICS.eventWidth : layout.metrics.cardWidth) / 2 -
-          TIMELINE_METRICS.cardAnchorX,
+          ('event' in node
+            ? TIMELINE_METRICS.eventWidth / 2 - TIMELINE_METRICS.cardAnchorX
+            : showFilmLabels
+              ? layout.metrics.cardWidth / 2 - layout.metrics.cardAnchorX
+              : 0),
         top: node.y - viewport.current.clientHeight / 2 + 36,
         behavior: prefersReducedMotion() ? 'instant' : 'smooth',
       });
@@ -779,6 +786,22 @@ export function Atlas() {
                     <Sparkles size={13} /> Discover
                   </button>
                   <button
+                    className="event-toggle film-label-toggle"
+                    aria-label="Show film titles and posters"
+                    aria-pressed={showFilmLabels}
+                    title="Show film titles and posters"
+                    onClick={() => setShowFilmLabels((value) => !value)}
+                  >
+                    <span className="film-labels-full">Titles &amp; posters</span>
+                    <span className="film-labels-short" aria-hidden="true">
+                      Labels
+                    </span>
+                    <Check
+                      size={12}
+                      style={{ visibility: showFilmLabels ? 'visible' : 'hidden' }}
+                    />
+                  </button>
+                  <button
                     className="event-toggle"
                     aria-label="Show major events"
                     aria-pressed={showEvents}
@@ -836,10 +859,16 @@ export function Atlas() {
                     ))}
                   </div>
                   <div
-                    className={'timeline-canvas is-' + layout.detailLevel}
+                    className={
+                      'timeline-canvas is-' +
+                      layout.detailLevel +
+                      (showFilmLabels ? '' : ' is-labels-hidden')
+                    }
                     style={
                       {
                         height: layout.height,
+                        '--movie-marker-size': FILM_MARKER_SIZE + 'px',
+                        '--movie-card-anchor': layout.metrics.cardAnchorX + 'px',
                         '--movie-card-width': `${layout.metrics.cardWidth}px`,
                         '--movie-card-height': `${layout.metrics.cardHeight}px`,
                         '--event-card-width': `${TIMELINE_METRICS.eventWidth}px`,
@@ -994,10 +1023,15 @@ export function Atlas() {
                           data-matching={matching}
                           aria-label={`${movie.title}, ${movie.releaseDate.slice(0, 4)}${movie.crossoverUniverseIds.length ? ', crossover' : ''}${watchedIds.has(movie.id) ? ', watched' : ''}${active ? (matching ? ', matches filters' : ', outside filters') : ''}`}
                           aria-pressed={selectedId === movie.id}
+                          aria-haspopup="dialog"
                           title={`${movie.title} · ${formatDate(movie.releaseDate)}`}
                           style={{
-                            left: node.x - TIMELINE_METRICS.cardAnchorX,
-                            top: node.y - layout.metrics.cardHeight / 2,
+                            left:
+                              node.x -
+                              (showFilmLabels ? layout.metrics.cardAnchorX : FILM_MARKER_SIZE / 2),
+                            top:
+                              node.y -
+                              (showFilmLabels ? layout.metrics.cardHeight : FILM_MARKER_SIZE) / 2,
                             ...colorStyle(color),
                           }}
                           onClick={() => setSelectedId(movie.id)}

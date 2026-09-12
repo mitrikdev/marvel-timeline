@@ -21,6 +21,7 @@ Open http://127.0.0.1:3000. The data, fonts, and poster artwork are local; no AP
 - ANY matches at least one selected entity. ALL requires every selected entity. Year range (inclusive) and role constraints apply in both modes.
 - Movie positions stay fixed when filters change. + / − moves between compact overview, standard cards, and detailed cards with larger posters and full titles, while preserving the center date.
 - Posters appear beside timeline titles, in search, and in related-film links. Click a film for a larger poster, a short spoiler-light synopsis, cast, continuity, crossover details, curation notes, and source links.
+- **Titles & posters** (labeled **Labels** on phones) toggles film cards into compact, clickable station markers without moving the timeline. Hover or keyboard-focus a marker to preview the film; click or tap it for details.
 - Diamond markers show major story events and series milestones. Search for events or click their markers to open details and the related film. The Events toggle reclaims their space when hidden.
 - Events are anchored to their related film’s US release date, not an in-universe year. Film filters also dim events whose related films do not match.
 - Phones support portrait and landscape. Swipe to explore the map; search, filters, and film details adapt to narrow screens, and rotating preserves the current state.
