@@ -1,7 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Movie, Universe } from '../src/data/types';
-import { buildLayout, threadPath } from '../src/lib/timeline';
+import { movies as collection, universes as collectionUniverses } from '../src/data';
+import { buildLayout, threadPath, TIMELINE_METRICS } from '../src/lib/timeline';
+
+const {
+  axisPadding,
+  cardWidth,
+  cardHeight,
+  cardGap,
+  cardAnchorX,
+  trackSpacing,
+  laneLabelHeight,
+  lanePadding,
+  minLaneHeight,
+  canvasVerticalPadding,
+} = TIMELINE_METRICS;
 
 const universes: Universe[] = [
   { id: 'mcu', name: 'MCU', shortName: 'MCU' },
@@ -39,7 +53,7 @@ test('release chronology controls x while input universe order controls lane ord
     ['mcu', 'raimi'],
   );
   assert.ok(layout.lanes[0].y < layout.lanes[1].y);
-  assert.equal(layout.width, 72 + 22 * 180 + 72);
+  assert.equal(layout.width, 72 + 22 * 180 + cardWidth - cardAnchorX + cardGap);
 });
 
 test('same UTC release date has identical x in every universe, including leap years', () => {
@@ -68,8 +82,8 @@ test('layout is deterministic when input movies are reordered, including identic
   const first = buildLayout(movies, universes, 220);
   const second = buildLayout([...movies].reverse(), universes, 220);
   assert.deepEqual(first, second);
-  assert.equal(first.nodes.get('a')!.y + 52, first.nodes.get('b')!.y);
-  assert.equal(first.nodes.get('b')!.y + 52, first.nodes.get('c')!.y);
+  assert.equal(first.nodes.get('a')!.y + trackSpacing, first.nodes.get('b')!.y);
+  assert.equal(first.nodes.get('b')!.y + trackSpacing, first.nodes.get('c')!.y);
   assert.equal(first.nodes.get('a')!.y, first.nodes.get('d')!.y);
   assert.deepEqual(
     movies.map((entry) => entry.id),
@@ -88,38 +102,53 @@ test('dense release clusters allocate subtracks without card overlap or leaving 
   const layout = buildLayout(movies, universes, 140);
 
   for (const lane of layout.lanes) {
-    assert.ok(lane.height >= 94);
+    assert.ok(lane.height >= minLaneHeight);
     const top = lane.y - lane.height / 2;
     const bottom = lane.y + lane.height / 2;
     const nodes = [...layout.nodes.values()].filter(
       (node) => node.movie.primaryUniverseId === lane.id,
     );
     for (const node of nodes) {
-      assert.ok(node.x - 63 >= 0, `${node.movie.id} exceeds left bounds`);
-      assert.ok(node.x + 63 <= layout.width, `${node.movie.id} exceeds right bounds`);
-      assert.ok(node.y - 20 >= top + 24, `${node.movie.id} exceeds top padding`);
-      assert.ok(node.y + 20 <= bottom - 24, `${node.movie.id} exceeds bottom padding`);
+      assert.ok(node.x - cardAnchorX >= 0, `${node.movie.id} exceeds left bounds`);
+      assert.ok(
+        node.x - cardAnchorX + cardWidth <= layout.width,
+        `${node.movie.id} exceeds right bounds`,
+      );
+      assert.ok(
+        node.y - cardHeight / 2 >= top + laneLabelHeight,
+        `${node.movie.id} overlaps its lane label`,
+      );
+      assert.ok(
+        node.y + cardHeight / 2 <= bottom - lanePadding,
+        `${node.movie.id} exceeds bottom padding`,
+      );
     }
     for (let left = 0; left < nodes.length; left += 1) {
       for (let right = left + 1; right < nodes.length; right += 1) {
         const horizontalDistance = Math.abs(nodes[left].x - nodes[right].x);
         const verticalDistance = Math.abs(nodes[left].y - nodes[right].y);
         assert.ok(
-          horizontalDistance >= 126 || verticalDistance >= 40,
+          horizontalDistance >= cardWidth || verticalDistance >= cardHeight,
           'card rectangles must not overlap',
         );
         if (verticalDistance === 0)
-          assert.ok(horizontalDistance >= 144, 'cards sharing a track need an 18px gap');
+          assert.ok(
+            horizontalDistance >= cardWidth + cardGap,
+            'cards sharing a track need an 8px gap',
+          );
       }
     }
   }
-  assert.equal(layout.lanes[0].y - layout.lanes[0].height / 2, 32);
+  assert.equal(layout.lanes[0].y - layout.lanes[0].height / 2, canvasVerticalPadding);
   const lastLane = layout.lanes[layout.lanes.length - 1];
-  assert.equal(layout.height - (lastLane.y + lastLane.height / 2), 32);
-  assert.equal(layout.height, layout.lanes.reduce((sum, lane) => sum + lane.height, 0) + 64);
+  assert.equal(layout.height - (lastLane.y + lastLane.height / 2), canvasVerticalPadding);
+  assert.equal(
+    layout.height,
+    layout.lanes.reduce((sum, lane) => sum + lane.height, 0) + canvasVerticalPadding * 2,
+  );
 });
 
-test('subtracks are centered in the lane and separated by 52 pixels', () => {
+test('subtracks reserve lane label space and use compact 56px spacing', () => {
   const layout = buildLayout(
     [movie('first', '2020-01-01'), movie('second', '2020-01-01')],
     universes,
@@ -127,10 +156,10 @@ test('subtracks are centered in the lane and separated by 52 pixels', () => {
   );
   const first = layout.nodes.get('first')!;
   const second = layout.nodes.get('second')!;
-  assert.equal(second.y - first.y, 52);
-  assert.equal((first.y + second.y) / 2, layout.lanes[0].y);
+  assert.equal(second.y - first.y, 56);
+  assert.equal((first.y + second.y) / 2, layout.lanes[0].y + (laneLabelHeight - lanePadding) / 2);
   assert.equal(layout.lanes[0].height, 140);
-  assert.equal(layout.lanes[1].height, 94);
+  assert.equal(layout.lanes[1].height, 84);
 });
 
 test('unknown universes retain their movies in deterministic appended lanes', () => {
@@ -150,8 +179,8 @@ test('empty data yields finite deterministic dimensions and invalid scales are r
   const empty = buildLayout([], universes, 160);
   assert.equal(empty.nodes.size, 0);
   assert.equal(empty.yearEnd - empty.yearStart, 1);
-  assert.equal(empty.width, 304);
-  assert.equal(empty.height, 252);
+  assert.equal(empty.width, 384);
+  assert.equal(empty.height, 184);
   assert.deepEqual(empty, buildLayout([], universes, 160));
   for (const scale of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
     assert.throws(() => buildLayout([], universes, scale), RangeError);
@@ -176,4 +205,49 @@ test('thread paths handle empty/single nodes and pass through exact chronologica
     ]),
     'M 10 20 C 10 20, 10 80, 10 80',
   );
+});
+
+test('the complete collection stays collision-free and date-proportional at every zoom level', () => {
+  const baseline = buildLayout(collection, collectionUniverses, 160);
+  for (const scale of [100, 130, 160, 190, 220, 250, 280]) {
+    const layout = buildLayout(collection, collectionUniverses, scale);
+    assert.equal(layout.nodes.size, collection.length);
+    for (const lane of layout.lanes) {
+      const nodes = [...layout.nodes.values()].filter(
+        (node) => node.movie.primaryUniverseId === lane.id,
+      );
+      for (const node of nodes) {
+        const expectedX =
+          axisPadding + ((baseline.nodes.get(node.movie.id)!.x - axisPadding) * scale) / 160;
+        assert.ok(
+          Math.abs(node.x - expectedX) < 1e-8,
+          node.movie.id + ': zoom must preserve its release date',
+        );
+        assert.ok(node.x - cardAnchorX >= 0, node.movie.id + ': left edge is clipped');
+        assert.ok(
+          node.x - cardAnchorX + cardWidth + cardGap <= layout.width,
+          node.movie.id + ': right edge is clipped',
+        );
+        assert.ok(
+          node.y - cardHeight / 2 >= lane.y - lane.height / 2 + laneLabelHeight,
+          node.movie.id + ': overlaps lane label',
+        );
+        assert.ok(
+          node.y + cardHeight / 2 <= lane.y + lane.height / 2 - lanePadding,
+          node.movie.id + ': outside lane',
+        );
+      }
+      for (let left = 0; left < nodes.length; left += 1) {
+        for (let right = left + 1; right < nodes.length; right += 1) {
+          const dx = Math.abs(nodes[left].x - nodes[right].x);
+          const dy = Math.abs(nodes[left].y - nodes[right].y);
+          assert.ok(
+            dx >= cardWidth || dy >= cardHeight,
+            scale + 'px/year: ' + nodes[left].movie.id + ' overlaps ' + nodes[right].movie.id,
+          );
+          if (dy === 0) assert.ok(dx >= cardWidth + cardGap);
+        }
+      }
+    }
+  }
 });

@@ -45,7 +45,7 @@ import {
 } from '@/data';
 import type { Entity, FilterGroup, Filters, MatchMode, Movie, Role } from '@/data/types';
 import { emptyFilters, getMatchingMovies, hasActiveFilters } from '@/lib/filter';
-import { buildLayout, threadPath } from '@/lib/timeline';
+import { buildLayout, threadPath, TIMELINE_METRICS } from '@/lib/timeline';
 import { Dialog } from './Dialog';
 
 const groups: { key: FilterGroup; label: string }[] = [
@@ -365,10 +365,10 @@ export function Atlas() {
             </span>
           </Link>
           <span className="masthead-divider" />
-          <span className="brand-caption">A CONNECTED CINEMATIC HISTORY</span>
+          <span className="brand-caption">THE MARVEL MOVIE TIMELINE</span>
           <div className="masthead-right">
             <span className="edition">
-              <span className="status-dot" /> THE FILM COLLECTION · VOL. 01
+              <span className="status-dot" /> {firstYear}–{lastYear}
             </span>
             <button
               className="icon-button"
@@ -382,17 +382,6 @@ export function Atlas() {
 
         <div className="workspace">
           <aside className="sidebar" aria-label="Explore the atlas">
-            <div className="sidebar-intro">
-              <span className="eyebrow">START EXPLORING</span>
-              <h2>
-                Follow a thread<span>.</span>
-              </h2>
-              <p>
-                One character. Every universe.
-                <br />
-                See where the story takes you.
-              </p>
-            </div>
             <div className="quick-threads">
               {quickCharacters.map((id) => {
                 const character = characterById.get(id);
@@ -460,44 +449,10 @@ export function Atlas() {
                 </button>
               ))}
             </div>
-            <div className="sidebar-bottom">
-              <GitBranch size={16} />
-              <span>
-                Different worlds.
-                <br />
-                <strong>Connected stories.</strong>
-              </span>
-            </div>
           </aside>
 
           <main className="main-panel">
-            <section className="intro">
-              <div>
-                <div className="intro-kicker">
-                  <span className="eyebrow">THE MARVEL MOVIE TIMELINE</span>
-                  <span className="tiny-line" />
-                  <span>
-                    {firstYear}—{lastYear}
-                  </span>
-                </div>
-                <h1>
-                  Every universe. <span>One connected story.</span>
-                </h1>
-                <p>Trace the characters, follow the crossovers, and find the connections.</p>
-              </div>
-              <div className="collection-stats">
-                <strong>
-                  {movies.length}
-                  <span>FILMS</span>
-                </strong>
-                <span className="stats-divider" />
-                <strong>
-                  {universes.length}
-                  <span>UNIVERSES</span>
-                </strong>
-              </div>
-            </section>
-
+            <h1 className="sr-only">Marvel movie timeline</h1>
             <div className="toolbar">
               <div className="search-wrap">
                 <Search size={17} />
@@ -607,8 +562,7 @@ export function Atlas() {
                 ))}
                 {!active && (
                   <span className="unfiltered-hint">
-                    <span className="small-orbit" /> All stories, connected. Choose a character to
-                    reveal their path.
+                    <span className="small-orbit" /> Choose a character to trace their films.
                   </span>
                 )}
               </div>
@@ -667,7 +621,16 @@ export function Atlas() {
                       </span>
                     ))}
                   </div>
-                  <div className="timeline-canvas" style={{ height: layout.height }}>
+                  <div
+                    className="timeline-canvas"
+                    style={
+                      {
+                        height: layout.height,
+                        '--movie-card-width': `${TIMELINE_METRICS.cardWidth}px`,
+                        '--movie-card-height': `${TIMELINE_METRICS.cardHeight}px`,
+                      } as CSSProperties
+                    }
+                  >
                     {Array.from({ length: layout.yearEnd - layout.yearStart }, (_, index) => (
                       <div
                         key={index}
@@ -803,7 +766,11 @@ export function Atlas() {
                           aria-label={`${movie.title}, ${movie.releaseDate.slice(0, 4)}${movie.crossoverUniverseIds.length ? ', crossover' : ''}${active ? (matching ? ', matches filters' : ', outside filters') : ''}`}
                           aria-pressed={selectedId === movie.id}
                           title={`${movie.title} · ${formatDate(movie.releaseDate)}`}
-                          style={{ left: node.x - 8, top: node.y - 20, ...colorStyle(color) }}
+                          style={{
+                            left: node.x - TIMELINE_METRICS.cardAnchorX,
+                            top: node.y - TIMELINE_METRICS.cardHeight / 2,
+                            ...colorStyle(color),
+                          }}
                           onClick={() => setSelectedId(movie.id)}
                         >
                           <span className="station-dot">
@@ -935,15 +902,6 @@ export function Atlas() {
                 <ArrowRight size={15} />
               </button>
             </div>
-            <footer className="page-footer">
-              <span>MADE FOR THE CONNECTIONS.</span>
-              <span>
-                An independent fan project <span className="footer-dot">·</span>{' '}
-                <button onClick={() => setPanel('about')}>
-                  About & sources <ArrowUpRight size={11} />
-                </button>
-              </span>
-            </footer>
           </main>
         </div>
       </div>
