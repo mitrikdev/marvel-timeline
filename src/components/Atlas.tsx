@@ -49,6 +49,7 @@ import { emptyFilters, getMatchingMovies, hasActiveFilters } from '@/lib/filter'
 import { buildLayout, threadPath, TIMELINE_METRICS } from '@/lib/timeline';
 import { Dialog } from './Dialog';
 import { EventDetails } from './EventDetails';
+import { Sidebar } from './Sidebar';
 import { timelineEvents } from '@/data/events';
 
 const groups: { key: FilterGroup; label: string }[] = [
@@ -57,14 +58,6 @@ const groups: { key: FilterGroup; label: string }[] = [
   { key: 'franchises', label: 'Franchises / teams' },
   { key: 'universes', label: 'Universes' },
   { key: 'studios', label: 'Studios' },
-];
-const quickCharacters = [
-  'peter-parker',
-  'stephen-strange',
-  'logan',
-  'tony-stark',
-  'bruce-banner',
-  'wade-wilson',
 ];
 const initials = (value: string) =>
   value
@@ -154,6 +147,16 @@ export function Atlas() {
       viewport.current.scrollTo({
         left: node.x - viewport.current.clientWidth / 2,
         top: node.y - viewport.current.clientHeight / 2 + 36,
+        behavior: prefersReducedMotion() ? 'instant' : 'smooth',
+      });
+  }
+  function scrollToUniverse(id: string) {
+    const lane = layout.lanes.find((item) => item.id === id);
+    const firstMovie = movies.find((movie) => movie.primaryUniverseId === id);
+    if (lane && viewport.current)
+      viewport.current.scrollTo({
+        top: lane.y - lane.height / 2,
+        left: Math.max(0, (firstMovie ? (layout.nodes.get(firstMovie.id)?.x ?? 72) : 72) - 100),
         behavior: prefersReducedMotion() ? 'instant' : 'smooth',
       });
   }
@@ -413,75 +416,11 @@ export function Atlas() {
         </header>
 
         <div className="workspace">
-          <aside className="sidebar" aria-label="Explore the atlas">
-            <div className="quick-threads">
-              {quickCharacters.map((id) => {
-                const character = characterById.get(id);
-                if (!character) return null;
-                const isSelected = filters.characters.includes(id);
-                const count = movies.filter((movie) =>
-                  movie.appearances.some((appearance) => appearance.characterId === id),
-                ).length;
-                return (
-                  <button
-                    key={id}
-                    className={`quick-thread ${isSelected ? 'chosen' : ''}`}
-                    style={colorStyle(character.color)}
-                    aria-pressed={isSelected}
-                    onClick={() => toggleFilter('characters', id)}
-                  >
-                    <span className="character-monogram">{initials(character.name)}</span>
-                    <span className="quick-name">
-                      {character.name}
-                      <small>{count} films</small>
-                    </span>
-                    <span className="quick-action">
-                      {isSelected ? <Check size={15} /> : <Plus size={15} />}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              className="all-characters"
-              onClick={() => {
-                setFilterGroup('characters');
-                setPanel('filters');
-              }}
-            >
-              All characters <ArrowUpRight size={14} />
-            </button>
-            <div className="sidebar-separator" />
-            <div className="sidebar-section-heading">
-              <span className="eyebrow">THE UNIVERSES</span>
-              <span>{universes.length.toString().padStart(2, '0')}</span>
-            </div>
-            <div className="universe-nav">
-              {universes.map((universe) => (
-                <button
-                  key={universe.id}
-                  onClick={() => {
-                    const lane = layout.lanes.find((item) => item.id === universe.id);
-                    const laneMovies = movies.filter(
-                      (movie) => movie.primaryUniverseId === universe.id,
-                    );
-                    if (lane && viewport.current)
-                      viewport.current.scrollTo({
-                        top: lane.y - lane.height / 2,
-                        left: Math.max(0, (layout.nodes.get(laneMovies[0]?.id)?.x ?? 72) - 100),
-                        behavior: prefersReducedMotion() ? 'instant' : 'smooth',
-                      });
-                  }}
-                >
-                  <span className="universe-dot" style={{ background: universe.color }} />
-                  <span>{universe.name}</span>
-                  <span className="universe-count">
-                    {movies.filter((movie) => movie.primaryUniverseId === universe.id).length}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </aside>
+          <Sidebar
+            selectedCharacterIds={filters.characters}
+            onCharacter={(id) => toggleFilter('characters', id)}
+            onUniverse={scrollToUniverse}
+          />
 
           <main className="main-panel">
             <h1 className="sr-only">Marvel movie timeline</h1>

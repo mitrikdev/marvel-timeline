@@ -16,6 +16,7 @@ Open http://127.0.0.1:3000. The data and fonts are local; no API keys, database,
 ## Explore
 
 - Drag or scroll the map in either direction; keyboard users can focus it and use arrow keys.
+- Filter sidebar universes by name, or browse every character in compact, collapsible team groups. Character search also matches real names, aliases, and team names.
 - Choose a character, actor, franchise/team, universe, studio, year range, or appearance role.
 - ANY matches at least one selected entity. ALL requires every selected entity. Year range (inclusive) and role constraints apply in both modes.
 - Movie positions stay fixed when filters change. + / − changes spacing while preserving the center date.
@@ -42,6 +43,7 @@ The tests cover dataset integrity, exact film scope, date ordering, variant refe
 - `src/data/legacy.ts`: 39 Sony, Fox, animated, and legacy films.
 - `src/data/helpers.ts`: normalizes curated appearances into separate movie, character, and actor records.
 - `src/data/index.ts`: continuity registry and searchable display names.
+- `src/data/character-groups.ts`: primary team/squad navigation groups and an Other characters section for the rest of the catalog.
 - `src/data/events.ts`: major story events and film-series milestones, with related movie ids and sources.
 - `docs/sources-mcu.md` and `docs/sources-legacy.md`: source and curation notes.
 
