@@ -46,7 +46,9 @@ Use US theatrical dates. Role labels are editorial categories, not screen-time m
 
 ## Deployment
 
-The intended repository is `mitrikdev/marvel-timeline`, connected to the user's Vercel account as a Next.js project. Vercel's Git integration handles production deployments from `main` and preview deployments for branches. GitHub Actions runs the validation commands above. It does not need a Vercel token.
+Production: [marvel-timeline-sepia.vercel.app](https://marvel-timeline-sepia.vercel.app).
+
+The private [mitrikdev/marvel-timeline](https://github.com/mitrikdev/marvel-timeline) repository is connected to the `marvel-timeline` Next.js project in the user's Vercel account. Vercel's Git integration handles production deployments from `main` and preview deployments for branches. GitHub Actions runs the validation commands above. It does not need a Vercel token.
 
 To reproduce the integration, import the GitHub repository in Vercel, select the Next.js framework preset and repository root, and deploy. No environment variables are required.
 
