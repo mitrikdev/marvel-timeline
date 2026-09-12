@@ -1859,9 +1859,6 @@ button.team-heading:hover {
   border-top: 1px solid #2c384c;
   margin-top: 20px;
 }
-.rotate-screen {
-  display: none;
-}
 @media (min-width: 1700px) {
   .sidebar {
     width: 258px;
@@ -2047,110 +2044,6 @@ button.team-heading:hover {
     padding: 10px 22px;
   }
 }
-@media (orientation: portrait) and (max-width: 900px) {
-  .app-shell {
-    display: none;
-  }
-  .dialog {
-    display: none;
-  }
-  .dialog::backdrop {
-    background: transparent;
-    backdrop-filter: none;
-  }
-  .rotate-screen {
-    display: flex;
-    width: 100vw;
-    height: 100dvh;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    padding: 30px;
-    text-align: center;
-    background: radial-gradient(ellipse at 50% 35%, #34243055, transparent 60%), #0b0e15;
-  }
-  .rotate-brand {
-    position: absolute;
-    top: 32px;
-    left: 28px;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: 2px;
-  }
-  .rotate-brand .marvel-mark {
-    height: 25px;
-    font-size: 24px;
-  }
-  .rotate-illustration {
-    height: 130px;
-    width: 130px;
-    border: 1px solid #332c3d;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    margin-bottom: 35px;
-    background: #1b152030;
-    color: #d5b2c2;
-    box-shadow: 0 0 60px #c2475b09;
-  }
-  .rotate-illustration > svg:first-child {
-    transform: rotate(90deg);
-    animation: rotate-device 3.8s ease-in-out infinite;
-  }
-  .rotation-arrow {
-    position: absolute;
-    right: 17px;
-    top: 19px;
-    color: #ee879c;
-    transform: rotate(-45deg);
-  }
-  .rotate-screen .eyebrow {
-    font-size: 11px;
-    letter-spacing: 2.6px;
-    color: #b88597;
-    margin: 0 0 13px;
-  }
-  .rotate-screen h1 {
-    font-size: 31px;
-    font-weight: 500;
-    letter-spacing: -1.2px;
-    margin: 0 0 14px;
-  }
-  .rotate-screen > p:last-of-type {
-    color: #a19aab;
-    font-size: 15px;
-    line-height: 1.9;
-    margin: 0;
-  }
-  .rotate-foot {
-    position: absolute;
-    bottom: max(28px, env(safe-area-inset-bottom));
-    font-size: 11px;
-    color: #605c70;
-    letter-spacing: 2px;
-  }
-  .dialog[open] {
-    visibility: hidden;
-  }
-}
-@keyframes rotate-device {
-  0%,
-  15% {
-    transform: rotate(0deg);
-  }
-  45%,
-  85% {
-    transform: rotate(90deg);
-  }
-  100% {
-    transform: rotate(0deg);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   *,
   *:before,
@@ -2181,5 +2074,161 @@ button.team-heading:hover {
   }
   .toolbar {
     gap: 5px;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .app-shell {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .masthead {
+    height: 48px;
+    padding: 0 12px;
+    gap: 10px;
+  }
+  .brand {
+    gap: 8px;
+  }
+  .marvel-mark {
+    font-size: 23px;
+    height: 25px;
+  }
+  .atlas-word {
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+  .masthead-right {
+    gap: 8px;
+  }
+  .edition {
+    gap: 5px;
+  }
+  .main-panel {
+    padding: 8px 8px 0;
+  }
+  .toolbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 0 8px 6px;
+    gap: 4px 10px;
+  }
+  .search-wrap {
+    flex: 1 0 100%;
+    height: 42px;
+    padding-left: 0;
+    border-bottom: 1px solid #2a2d37;
+  }
+  .search-wrap input,
+  .filter-search input {
+    font-size: 16px;
+  }
+  .search-results {
+    min-width: 0;
+    left: -8px;
+    right: -8px;
+    max-height: 60dvh;
+  }
+  .toolbar-divider {
+    display: none;
+  }
+  .reset-button {
+    margin-left: auto;
+  }
+  .filter-summary {
+    gap: 6px;
+  }
+  .unfiltered-hint {
+    min-width: 0;
+  }
+  .map-topline {
+    padding: 0 8px;
+  }
+  .map-topline-actions .map-pan-hint {
+    display: none;
+  }
+  .map-legend {
+    gap: 12px;
+    padding: 0 8px;
+  }
+  .map-legend .legend-date,
+  .map-legend .legend-active {
+    display: none;
+  }
+  .map-controls {
+    right: 8px;
+  }
+  .timeline-navigator {
+    gap: 4px;
+  }
+  .navigator-label {
+    display: none;
+  }
+  .minimap {
+    margin: 0 16px;
+  }
+  .minimap > button:nth-child(2),
+  .minimap > button:nth-child(4) {
+    display: none;
+  }
+  .no-matches {
+    width: min(320px, calc(100% - 24px));
+    padding: 20px;
+  }
+  .dialog,
+  .movie-dialog,
+  .dialog.event-dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 24px);
+  }
+  .dialog-header,
+  .movie-dialog .dialog-header {
+    padding: 10px 14px;
+  }
+  .filter-tabs {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .filter-search {
+    margin: 12px 14px;
+  }
+  .filter-options {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 14px 12px;
+    height: min(230px, 30dvh);
+  }
+  .year-filter {
+    margin-left: 14px;
+    margin-right: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .role-filter {
+    padding: 0 14px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .role-filter > button {
+    margin: 0;
+  }
+  .dialog-footer {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+  .detail-body,
+  .event-detail-content,
+  .about-content {
+    padding: 16px;
+  }
+  .detail-date {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .detail-meta > div {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .detail-meta dt {
+    min-width: 0;
   }
 }

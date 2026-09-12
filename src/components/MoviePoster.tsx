@@ -28,7 +28,11 @@ export function MoviePoster({
           alt={isDetail ? title + ' poster' : ''}
           fill
           sizes={
-            isDetail ? '(max-height: 600px) 96px, 144px' : variant === 'event' ? '40px' : '24px'
+            isDetail
+              ? '(max-width: 600px) 96px, (max-height: 600px) 96px, 144px'
+              : variant === 'event'
+                ? '40px'
+                : '24px'
           }
           loading={isDetail ? 'eager' : 'lazy'}
           draggable={false}

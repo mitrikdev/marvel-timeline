@@ -15,33 +15,16 @@ export function Dialog({
   className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const orientationClosing = useRef(false);
   useEffect(() => {
     const dialog = ref.current;
-    if (!dialog) return;
-    const portraitPhone = window.matchMedia('(orientation: portrait) and (max-width: 900px)');
-    const syncOrientation = () => {
-      if (portraitPhone.matches && dialog.open) {
-        orientationClosing.current = true;
-        dialog.close();
-      } else if (!portraitPhone.matches && !dialog.open) dialog.showModal();
-    };
-    syncOrientation();
-    portraitPhone.addEventListener('change', syncOrientation);
-    return () => portraitPhone.removeEventListener('change', syncOrientation);
+    if (dialog && !dialog.open) dialog.showModal();
   }, []);
   return (
     <dialog
       ref={ref}
       className={`dialog ${className}`}
       aria-label={title}
-      onClose={() => {
-        if (orientationClosing.current) {
-          orientationClosing.current = false;
-          return;
-        }
-        onClose();
-      }}
+      onClose={onClose}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

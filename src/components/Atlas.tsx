@@ -28,7 +28,6 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
-  Smartphone,
   X,
   Minus,
 } from 'lucide-react';
@@ -374,24 +373,6 @@ export function Atlas() {
 
   return (
     <>
-      <div className="rotate-screen" role="status">
-        <div className="rotate-brand">
-          <span className="marvel-mark">MARVEL</span>
-          <span>ATLAS</span>
-        </div>
-        <div className="rotate-illustration">
-          <Smartphone size={56} strokeWidth={1.2} />
-          <RotateCcw className="rotation-arrow" size={26} />
-        </div>
-        <p className="eyebrow">A WIDER UNIVERSE AWAITS</p>
-        <h1>Rotate your phone.</h1>
-        <p>
-          This story needs a little more space.
-          <br />
-          Turn your phone sideways to explore the timeline.
-        </p>
-        <span className="rotate-foot">LANDSCAPE EXPERIENCE</span>
-      </div>
       <div className="app-shell">
         <header className="masthead">
           <Link className="brand" href="/" aria-label="Marvel Atlas home">
@@ -950,8 +931,8 @@ export function Atlas() {
               </span>
               <span>
                 <Expand size={19} />
-                <strong>Find your view</strong>Use + / − to change spacing. On phones, rotate to
-                landscape.
+                <strong>Find your view</strong>Use + / − to change spacing. Drag or swipe to explore
+                the map in either direction.
               </span>
             </div>
             <p>

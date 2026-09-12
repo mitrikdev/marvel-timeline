@@ -23,7 +23,7 @@ Open http://127.0.0.1:3000. The data, fonts, and poster artwork are local; no AP
 - Posters appear beside timeline titles, in search, and in related-film links. Click a film for a larger poster, cast, continuity, crossover details, curation notes, and source links.
 - Diamond markers show major story events and series milestones. Search for events or click their markers to open details and the related film. The Events toggle reclaims their space when hidden.
 - Events are anchored to their related film’s US release date, not an in-universe year. Film filters also dim events whose related films do not match.
-- On phones, portrait displays a “Rotate your phone” screen. Landscape restores the map and current state, including open panels.
+- Phones support portrait and landscape. Swipe to explore the map; search, filters, and film details adapt to narrow screens, and rotating preserves the current state.
 - Peter Parker and Miles Morales are separate character records; the Spider-Man franchise includes their wider film family.
 
 ## Validate
