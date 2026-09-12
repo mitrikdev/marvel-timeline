@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. The data and fonts are local; no API keys, database, or external data service is needed.
+Open http://127.0.0.1:3000. The data, fonts, and poster artwork are local; no API keys, database, or external data service is needed.
 
 ## Explore
 
@@ -20,7 +20,7 @@ Open http://127.0.0.1:3000. The data and fonts are local; no API keys, database,
 - Choose a character, actor, franchise/team, universe, studio, year range, or appearance role.
 - ANY matches at least one selected entity. ALL requires every selected entity. Year range (inclusive) and role constraints apply in both modes.
 - Movie positions stay fixed when filters change. + / − changes spacing while preserving the center date.
-- Click a film for cast, continuity, crossover details, curation notes, and source links.
+- Posters appear beside timeline titles, in search, and in related-film links. Click a film for a larger poster, cast, continuity, crossover details, curation notes, and source links.
 - Diamond markers show major story events and series milestones. Search for events or click their markers to open details and the related film. The Events toggle reclaims their space when hidden.
 - Events are anchored to their related film’s US release date, not an in-universe year. Film filters also dim events whose related films do not match.
 - On phones, portrait displays a “Rotate your phone” screen. Landscape restores the map and current state, including open panels.
@@ -44,6 +44,7 @@ The tests cover dataset integrity, exact film scope, date ordering, variant refe
 - `src/data/helpers.ts`: normalizes curated appearances into separate movie, character, and actor records.
 - `src/data/index.ts`: continuity registry and searchable display names.
 - `src/data/character-groups.ts`: primary team/squad navigation groups and an Other characters section for the rest of the catalog.
+- `src/data/posters.ts` and `public/posters/`: local, optimized promotional cover artwork with source attribution in `docs/sources-posters.md`.
 - `src/data/events.ts`: major story events and film-series milestones, with related movie ids and sources.
 - `docs/sources-mcu.md` and `docs/sources-legacy.md`: source and curation notes.
 

@@ -23,7 +23,6 @@ import {
   Expand,
   GitBranch,
   Info,
-  Layers3,
   Move,
   Plus,
   RotateCcw,
@@ -49,6 +48,8 @@ import { emptyFilters, getMatchingMovies, hasActiveFilters } from '@/lib/filter'
 import { buildLayout, threadPath, TIMELINE_METRICS } from '@/lib/timeline';
 import { Dialog } from './Dialog';
 import { EventDetails } from './EventDetails';
+import { MoviePoster } from './MoviePoster';
+import { posters } from '@/data/posters';
 import { Sidebar } from './Sidebar';
 import { timelineEvents } from '@/data/events';
 
@@ -84,7 +85,7 @@ export function Atlas() {
   const [panel, setPanel] = useState<'filters' | 'about' | null>(null);
   const [filterGroup, setFilterGroup] = useState<FilterGroup>('characters');
   const [query, setQuery] = useState('');
-  const [density, setDensity] = useState(160);
+  const [density, setDensity] = useState<number>(TIMELINE_METRICS.densityDefault);
   const viewport = useRef<HTMLDivElement>(null);
   const minimapWindow = useRef<HTMLSpanElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -205,7 +206,7 @@ export function Atlas() {
   useEffect(() => {
     const view = viewport.current;
     if (!view) return;
-    view.scrollLeft = 72 + (2015 - firstYear) * 160;
+    view.scrollLeft = 72 + (2015 - firstYear) * TIMELINE_METRICS.densityDefault;
   }, []);
   useEffect(() => {
     const view = viewport.current;
@@ -655,33 +656,17 @@ export function Atlas() {
                         <filter id="thread-glow" x="-20%" y="-30%" width="140%" height="160%">
                           <feGaussianBlur stdDeviation="4" />
                         </filter>
-                        <filter id="floor-blur" x="-20%" y="-100%" width="140%" height="300%">
-                          <feGaussianBlur stdDeviation="6 11" />
-                        </filter>
-                        <linearGradient id="reflection-fade" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0" stopColor="white" stopOpacity=".28" />
-                          <stop offset="1" stopColor="white" stopOpacity="0" />
-                        </linearGradient>
                       </defs>
                       {lanePaths.map((lane) => (
                         <path
                           key={lane.id}
+                          data-continuity={lane.id}
                           d={lane.path}
                           fill="none"
                           stroke={lane.color}
-                          strokeWidth="1.5"
-                          opacity={active ? 0.09 : 0.22}
+                          strokeWidth="1.8"
+                          opacity={active ? 0.34 : 0.58}
                         />
-                      ))}
-                      {threads.map((thread) => (
-                        <g
-                          key={`${thread.id}-reflection`}
-                          opacity=".12"
-                          transform="translate(0 24)"
-                          filter="url(#floor-blur)"
-                        >
-                          <path d={thread.path} fill="none" stroke={thread.color} strokeWidth="8" />
-                        </g>
                       ))}
                       {threads.map((thread, index) => (
                         <g key={thread.id} className="active-thread" data-thread={thread.id}>
@@ -697,16 +682,14 @@ export function Atlas() {
                             d={thread.path}
                             fill="none"
                             stroke={thread.color}
-                            strokeWidth={thread.franchise ? 1.8 : 2.6}
+                            strokeWidth={thread.franchise ? 2.2 : 3}
                             strokeLinecap="round"
                             strokeDasharray={index > 0 ? '7 4' : undefined}
                           />
                         </g>
                       ))}
                       {movies
-                        .filter(
-                          (movie) => movie.crossoverUniverseIds.length && matchingIds.has(movie.id),
-                        )
+                        .filter((movie) => movie.crossoverUniverseIds.length)
                         .flatMap((movie) => {
                           const target = layout.nodes.get(movie.id);
                           if (!target) return [];
@@ -727,9 +710,9 @@ export function Atlas() {
                                 d={threadPath([source, target])}
                                 fill="none"
                                 stroke={universeById.get(universeId)?.color}
-                                strokeWidth="1.2"
-                                strokeDasharray="3 7"
-                                opacity={active ? 0.38 : 0.18}
+                                strokeWidth="1.7"
+                                strokeDasharray="4 5"
+                                opacity={active ? (matchingIds.has(movie.id) ? 0.76 : 0.38) : 0.56}
                               />
                             );
                           });
@@ -791,17 +774,9 @@ export function Atlas() {
                           <span className="station-dot">
                             {movie.crossoverUniverseIds.length > 0 && <span />}
                           </span>
+                          <MoviePoster movieId={movie.id} title={movie.title} />
                           <span className="movie-label">
                             <span>{movie.title}</span>
-                            <small>
-                              {movie.releaseDate.slice(0, 4)}
-                              {movie.crossoverUniverseIds.length > 0 && (
-                                <>
-                                  <span className="label-divider">·</span>
-                                  <GitBranch size={10} />
-                                </>
-                              )}
-                            </small>
                           </span>
                         </button>
                       );
@@ -823,17 +798,25 @@ export function Atlas() {
                 <button
                   className="icon-button"
                   aria-label="Zoom out timeline"
-                  disabled={density <= 100}
-                  onClick={() => zoom(Math.max(100, density - 30))}
+                  disabled={density <= TIMELINE_METRICS.densityMin}
+                  onClick={() =>
+                    zoom(
+                      Math.max(TIMELINE_METRICS.densityMin, density - TIMELINE_METRICS.densityStep),
+                    )
+                  }
                 >
                   <Minus size={16} />
                 </button>
-                <span>{Math.round((density / 160) * 100)}%</span>
+                <span>{Math.round((density / TIMELINE_METRICS.densityDefault) * 100)}%</span>
                 <button
                   className="icon-button"
                   aria-label="Zoom in timeline"
-                  disabled={density >= 280}
-                  onClick={() => zoom(Math.min(280, density + 30))}
+                  disabled={density >= TIMELINE_METRICS.densityMax}
+                  onClick={() =>
+                    zoom(
+                      Math.min(TIMELINE_METRICS.densityMax, density + TIMELINE_METRICS.densityStep),
+                    )
+                  }
                 >
                   <Plus size={16} />
                 </button>
@@ -1048,7 +1031,7 @@ function SearchResults({
           >
             <span className="search-result-icon" style={colorStyle(result.color)}>
               {result.type === 'movie' ? (
-                <Layers3 size={15} />
+                <MoviePoster movieId={result.id} title={result.name} variant="search" />
               ) : result.type === 'event' ? (
                 <Diamond size={15} />
               ) : (
@@ -1257,7 +1240,8 @@ function MovieDetails({
   return (
     <Dialog title="Film details" onClose={onClose} className="movie-dialog">
       <div className="movie-details" style={colorStyle(universe?.color)}>
-        <div className="film-cover">
+        <div className="film-cover film-cover--with-poster">
+          <MoviePoster movieId={movie.id} title={movie.title} variant="detail" />
           <span className="film-cover-year">{movie.releaseDate.slice(0, 4)}</span>
           <div className="film-orbit orbit-one" />
           <div className="film-orbit orbit-two" />
@@ -1354,6 +1338,11 @@ function MovieDetails({
           )}
           <div className="source-links">
             <h4>Sources</h4>
+            {posters[movie.id] && (
+              <a href={posters[movie.id].sourceUrl} target="_blank" rel="noopener noreferrer">
+                Poster artwork <ArrowUpRight size={12} />
+              </a>
+            )}
             {movie.sourceUrls.map((url, index) => (
               <a key={url} href={url} target="_blank" rel="noopener noreferrer">
                 {new URL(url).hostname.replace(/^www\./, '')}

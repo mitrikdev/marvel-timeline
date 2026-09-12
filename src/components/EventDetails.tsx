@@ -5,6 +5,7 @@ import type { TimelineEvent } from '@/data/events';
 import type { Movie } from '@/data/types';
 import { universeById } from '@/data';
 import { Dialog } from './Dialog';
+import { MoviePoster } from './MoviePoster';
 
 export function EventDetails({
   event,
@@ -34,6 +35,7 @@ export function EventDetails({
         <div className="event-film-context">
           <span className="eyebrow">{universeById.get(movie.primaryUniverseId)?.name}</span>
           <button className="event-film-link" onClick={onMovie}>
+            <MoviePoster movieId={movie.id} title={movie.title} variant="event" />
             <span>
               {movie.title}
               <small>US release · {release}</small>

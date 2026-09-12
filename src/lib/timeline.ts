@@ -4,20 +4,24 @@ import type { TimelineEvent } from '../data/events';
 /** Shared geometry keeps rendered film cards aligned with collision checks. */
 export const TIMELINE_METRICS = {
   axisPadding: 72,
-  cardWidth: 152,
-  cardHeight: 52,
-  cardGap: 8,
+  densityDefault: 130,
+  densityMin: 90,
+  densityMax: 250,
+  densityStep: 20,
+  cardWidth: 192,
+  cardHeight: 40,
+  cardGap: 4,
   eventWidth: 176,
-  eventHeight: 32,
-  eventGap: 8,
+  eventHeight: 34,
+  eventGap: 4,
   eventTrackSpacing: 36,
   /** Distance from the button's left edge to its station dot. */
   cardAnchorX: 8,
-  trackSpacing: 56,
-  laneLabelHeight: 24,
-  lanePadding: 8,
-  minLaneHeight: 70,
-  canvasVerticalPadding: 8,
+  trackSpacing: 42,
+  laneLabelHeight: 20,
+  lanePadding: 4,
+  minLaneHeight: 64,
+  canvasVerticalPadding: 4,
 } as const;
 
 const {

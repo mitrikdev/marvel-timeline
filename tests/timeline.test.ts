@@ -7,6 +7,10 @@ import { buildLayout, threadPath, TIMELINE_METRICS } from '../src/lib/timeline';
 
 const {
   axisPadding,
+  densityDefault,
+  densityMin,
+  densityMax,
+  densityStep,
   cardWidth,
   cardHeight,
   cardGap,
@@ -21,6 +25,11 @@ const {
   minLaneHeight,
   canvasVerticalPadding,
 } = TIMELINE_METRICS;
+
+const zoomScales = Array.from(
+  { length: (densityMax - densityMin) / densityStep + 1 },
+  (_, index) => densityMin + index * densityStep,
+);
 
 const universes: Universe[] = [
   { id: 'mcu', name: 'MCU', shortName: 'MCU' },
@@ -139,7 +148,7 @@ test('dense release clusters allocate subtracks without card overlap or leaving 
         if (verticalDistance === 0)
           assert.ok(
             horizontalDistance >= cardWidth + cardGap,
-            'cards sharing a track need an 8px gap',
+            'cards sharing a track need a 4px gap',
           );
       }
     }
@@ -153,7 +162,7 @@ test('dense release clusters allocate subtracks without card overlap or leaving 
   );
 });
 
-test('subtracks reserve lane label space and use compact 56px spacing', () => {
+test('subtracks reserve lane label space and use compact 42px spacing', () => {
   const layout = buildLayout(
     [movie('first', '2020-01-01'), movie('second', '2020-01-01')],
     universes,
@@ -161,10 +170,10 @@ test('subtracks reserve lane label space and use compact 56px spacing', () => {
   );
   const first = layout.nodes.get('first')!;
   const second = layout.nodes.get('second')!;
-  assert.equal(second.y - first.y, 56);
+  assert.equal(second.y - first.y, 42);
   assert.equal((first.y + second.y) / 2, layout.lanes[0].y + (laneLabelHeight - lanePadding) / 2);
-  assert.equal(layout.lanes[0].height, 140);
-  assert.equal(layout.lanes[1].height, 84);
+  assert.equal(layout.lanes[0].height, 106);
+  assert.equal(layout.lanes[1].height, 64);
 });
 
 test('unknown universes retain their movies in deterministic appended lanes', () => {
@@ -184,8 +193,8 @@ test('empty data yields finite deterministic dimensions and invalid scales are r
   const empty = buildLayout([], universes, 160);
   assert.equal(empty.nodes.size, 0);
   assert.equal(empty.yearEnd - empty.yearStart, 1);
-  assert.equal(empty.width, 384);
-  assert.equal(empty.height, 184);
+  assert.equal(empty.width, 420);
+  assert.equal(empty.height, 136);
   assert.deepEqual(empty, buildLayout([], universes, 160));
   for (const scale of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
     assert.throws(() => buildLayout([], universes, scale), RangeError);
@@ -213,8 +222,8 @@ test('thread paths handle empty/single nodes and pass through exact chronologica
 });
 
 test('the complete collection stays collision-free and date-proportional at every zoom level', () => {
-  const baseline = buildLayout(collection, collectionUniverses, 160);
-  for (const scale of [100, 130, 160, 190, 220, 250, 280]) {
+  const baseline = buildLayout(collection, collectionUniverses, densityDefault);
+  for (const scale of zoomScales) {
     const layout = buildLayout(collection, collectionUniverses, scale);
     assert.equal(layout.nodes.size, collection.length);
     for (const lane of layout.lanes) {
@@ -223,7 +232,8 @@ test('the complete collection stays collision-free and date-proportional at ever
       );
       for (const node of nodes) {
         const expectedX =
-          axisPadding + ((baseline.nodes.get(node.movie.id)!.x - axisPadding) * scale) / 160;
+          axisPadding +
+          ((baseline.nodes.get(node.movie.id)!.x - axisPadding) * scale) / densityDefault;
         assert.ok(
           Math.abs(node.x - expectedX) < 1e-8,
           node.movie.id + ': zoom must preserve its release date',
@@ -347,8 +357,8 @@ test('omitting or hiding events preserves the existing film layout with no reser
   const hidden = buildLayout(movies, universes, 160, []);
   assert.deepEqual(omitted, hidden);
   assert.equal(omitted.eventNodes.size, 0);
-  assert.equal(omitted.height, 184);
-  assert.equal(omitted.lanes[0].height, 84);
+  assert.equal(omitted.height, 136);
+  assert.equal(omitted.lanes[0].height, 64);
   assert.equal(
     omitted.nodes.get('early')!.y,
     canvasVerticalPadding + laneLabelHeight + cardHeight / 2,
@@ -446,7 +456,7 @@ test('dense event badges and film cards never overlap or clip at any supported z
     timelineEvent('f', 'latest'),
     timelineEvent('g', 'other-universe'),
   ];
-  for (const scale of [100, 130, 160, 190, 220, 250, 280]) {
+  for (const scale of zoomScales) {
     const layout = buildLayout(movies, universes, scale, events);
     assert.equal(layout.eventNodes.size, events.length);
     for (const node of layout.eventNodes.values())
@@ -462,7 +472,7 @@ test('canonical story events fit every zoom and leave unoccupied lane heights un
       (event) => collection.find((movie) => movie.id === event.movieId)!.primaryUniverseId,
     ),
   );
-  for (const scale of [100, 130, 160, 190, 220, 250, 280]) {
+  for (const scale of zoomScales) {
     const baseline = buildLayout(collection, collectionUniverses, scale);
     const layout = buildLayout(collection, collectionUniverses, scale, timelineEvents);
     assert.equal(layout.eventNodes.size, timelineEvents.length);
@@ -487,4 +497,26 @@ test('canonical story events fit every zoom and leave unoccupied lane heights un
       );
     }
   }
+});
+
+test('default geometry meets the compactness budget without sacrificing the larger text boxes', () => {
+  const layout = buildLayout(collection, collectionUniverses, densityDefault, timelineEvents);
+  // The previous 77-film default was 2,004px high, with a 440px MCU lane.
+  assert.ok(layout.height <= 2004 * 0.8, 'the default canvas should be at least 20% shorter');
+  assert.ok(
+    layout.lanes.find((lane) => lane.id === 'mcu')!.height <= 440 * 0.9,
+    'the MCU lane should remain at least 10% shorter with poster thumbnails',
+  );
+  assert.ok(
+    cardHeight >= 16 * 1.1 * 2 + 2,
+    'film cards must hold two 16px title lines plus borders',
+  );
+  assert.ok(
+    eventHeight >= 14 * 1.1 * 2 + 2,
+    'event badges must hold two 14px title lines plus borders',
+  );
+  assert.ok(zoomScales.includes(densityDefault));
+  assert.equal(zoomScales.at(-1), densityMax);
+  assert.equal((densityMax - densityMin) % densityStep, 0, 'zoom limits must align with the step');
+  assertEventLayoutBounds(layout);
 });

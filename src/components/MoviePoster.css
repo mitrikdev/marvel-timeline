@@ -1,0 +1,98 @@
+.movie-poster {
+  position: relative;
+  display: block;
+  flex: none;
+  overflow: hidden;
+  width: 24px;
+  height: 36px;
+  border-radius: 2px;
+  background: #18202c;
+  box-shadow: 0 0 0 1px #ffffff16;
+}
+.movie-poster img {
+  object-fit: contain;
+  user-select: none;
+}
+.poster-fallback {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #8f9bac;
+  text-align: center;
+  padding: 2px;
+}
+.poster-fallback > span {
+  font-size: 11px;
+  padding: 0 12px;
+}
+.movie-node.is-faded .movie-poster {
+  filter: saturate(0.3);
+}
+.search-result-icon:has(.movie-poster) {
+  height: 36px;
+  flex-shrink: 0;
+  background: none;
+}
+.movie-poster--event {
+  width: 40px;
+  height: 60px;
+}
+.event-film-link > .movie-poster + span {
+  flex: 1;
+}
+.film-cover.film-cover--with-poster {
+  min-height: 256px;
+  height: auto;
+  padding: 24px 24px 24px 192px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+}
+.movie-poster--detail {
+  position: absolute;
+  left: 24px;
+  top: 20px;
+  width: 144px;
+  height: 216px;
+  border-radius: 5px;
+  box-shadow:
+    0 12px 28px #0007,
+    0 0 0 1px #ffffff24;
+}
+.film-cover--with-poster .film-cover-top {
+  gap: 16px;
+  line-height: 1.4;
+}
+.film-cover--with-poster .film-cover-top > span:last-child {
+  text-align: right;
+}
+.film-cover--with-poster .film-cover-title {
+  position: static;
+}
+.film-cover--with-poster .film-cover-title h3 {
+  font-size: 38px;
+  text-wrap: balance;
+}
+.film-cover--with-poster .cover-station {
+  display: none;
+}
+@media (max-height: 600px) {
+  .film-cover.film-cover--with-poster {
+    min-height: 176px;
+    padding: 16px 20px 16px 136px;
+    gap: 16px;
+  }
+  .movie-poster--detail {
+    top: 16px;
+    left: 20px;
+    width: 96px;
+    height: 144px;
+  }
+  .film-cover--with-poster .film-cover-title h3 {
+    font-size: 30px;
+  }
+}
