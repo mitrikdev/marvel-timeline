@@ -26,14 +26,15 @@ Open http://127.0.0.1:3000. The data, fonts, and poster artwork are local; no AP
 - Phones support portrait and landscape. Swipe to explore the map; search, filters, and film details adapt to narrow screens, and rotating preserves the current state.
 - Peter Parker and Miles Morales are separate character records; the Spider-Man franchise includes their wider film family.
 
-### Explore tools
+### Discover tools
 
-Open **Explore** above the map for four tools:
+Open **Discover** above the map for three tools:
 
 - **Follow a journey:** play through a character or actor’s appearances in release order. The map follows each stop; pause, step through films, or open the current film’s details.
 - **Separate character variants:** trace each actor and originating universe separately, including the points where variants meet in crossover films.
 - **Connect these films:** choose two films and reveal a shortest chain of shared characters or actors. Each link explains the connection.
-- **My watch history:** mark films watched, filter the remaining list, and see progress overall and by universe. History stays in this browser and syncs across its tabs; no account is needed.
+
+Open **Watch list**, immediately left of Discover, to mark films watched, filter the remaining list, and see progress overall and by universe. History stays in this browser and syncs across its tabs; no account is needed.
 
 ## Validate
 

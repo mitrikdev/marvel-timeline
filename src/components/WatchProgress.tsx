@@ -30,7 +30,7 @@ export function WatchProgress({
       (status === 'all' || watched.has(movie.id) === (status === 'watched')),
   );
   return (
-    <Dialog title="Your watch history" onClose={onClose} className="watch-dialog">
+    <Dialog title="Your watch list" onClose={onClose} className="watch-dialog">
       <div className="watch-content">
         <div className="watch-total">
           <strong>
@@ -80,7 +80,7 @@ export function WatchProgress({
           <Search size={16} />
           <input
             type="search"
-            aria-label="Search watch history"
+            aria-label="Search watch list"
             placeholder="Find a film…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}

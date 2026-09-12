@@ -108,7 +108,7 @@ export function Atlas() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [showEvents, setShowEvents] = useState(true);
   const [panel, setPanel] = useState<
-    'filters' | 'about' | 'explore' | 'journey' | 'connect' | 'watch' | null
+    'filters' | 'about' | 'discover' | 'journey' | 'connect' | 'watch' | null
   >(null);
   const [filterGroup, setFilterGroup] = useState<FilterGroup>('characters');
   const [query, setQuery] = useState('');
@@ -127,9 +127,10 @@ export function Atlas() {
   const viewport = useRef<HTMLDivElement>(null);
   const minimapWindow = useRef<HTMLSpanElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const exploreButton = useRef<HTMLButtonElement>(null);
+  const discoverButton = useRef<HTMLButtonElement>(null);
+  const watchListButton = useRef<HTMLButtonElement>(null);
   const followedJourneyStop = useRef<string | null>(null);
-  const filmFromExplore = useRef(false);
+  const featureFilmOrigin = useRef<'discover' | 'watch' | null>(null);
   const drag = useRef<{
     x: number;
     y: number;
@@ -160,18 +161,26 @@ export function Atlas() {
     filters.roles.length +
     (filters.yearRange ? 1 : 0);
 
-  function focusExplore() {
-    requestAnimationFrame(() => exploreButton.current?.focus());
+  function focusDiscover() {
+    requestAnimationFrame(() => discoverButton.current?.focus());
   }
-  function closeExplore() {
+  function closeDiscover() {
     setPanel(null);
-    focusExplore();
+    focusDiscover();
+  }
+  function focusWatchList() {
+    requestAnimationFrame(() => watchListButton.current?.focus());
+  }
+  function closeWatchList() {
+    setPanel(null);
+    focusWatchList();
   }
   function closeMovie() {
     setSelectedId(null);
-    if (filmFromExplore.current) {
-      filmFromExplore.current = false;
-      focusExplore();
+    if (featureFilmOrigin.current) {
+      if (featureFilmOrigin.current === 'watch') focusWatchList();
+      else focusDiscover();
+      featureFilmOrigin.current = null;
     }
   }
   function endJourney() {
@@ -198,10 +207,10 @@ export function Atlas() {
     setVariantsShown((value) => !value);
     endJourney();
     if (!filters.characters.length) setFilters({ ...emptyFilters(), characters: ['peter-parker'] });
-    closeExplore();
+    closeDiscover();
   }
   function openFeatureFilm(id: string) {
-    filmFromExplore.current = true;
+    featureFilmOrigin.current = panel === 'watch' ? 'watch' : 'discover';
     setPanel(null);
     setSelectedEventId(null);
     setSelectedId(id);
@@ -747,12 +756,21 @@ export function Atlas() {
                 </span>
                 <div className="map-topline-actions">
                   <button
-                    ref={exploreButton}
-                    className="explore-button"
-                    onClick={() => setPanel('explore')}
-                    aria-label="Explore timeline features"
+                    ref={watchListButton}
+                    className="explore-button watch-list-button"
+                    onClick={() => setPanel('watch')}
+                    aria-haspopup="dialog"
                   >
-                    <Sparkles size={13} /> Explore
+                    <CircleCheck size={13} /> Watch list
+                  </button>
+                  <button
+                    ref={discoverButton}
+                    className="explore-button"
+                    onClick={() => setPanel('discover')}
+                    aria-label="Discover timeline features"
+                    aria-haspopup="dialog"
+                  >
+                    <Sparkles size={13} /> Discover
                   </button>
                   <button
                     className="event-toggle"
@@ -1040,7 +1058,7 @@ export function Atlas() {
                   }}
                   onClose={() => {
                     endJourney();
-                    focusExplore();
+                    focusDiscover();
                   }}
                   onMovie={() => {
                     setJourneyPlaying(false);
@@ -1165,8 +1183,8 @@ export function Atlas() {
         </div>
       </div>
 
-      {panel === 'explore' && (
-        <Dialog title="Explore the atlas" onClose={closeExplore} className="explore-dialog">
+      {panel === 'discover' && (
+        <Dialog title="Discover the atlas" onClose={closeDiscover} className="explore-dialog">
           <div className="explore-options">
             <button onClick={() => setPanel('journey')}>
               <Play />
@@ -1198,27 +1216,17 @@ export function Atlas() {
               </span>
               <ArrowRight size={18} />
             </button>
-            <button onClick={() => setPanel('watch')}>
-              <CircleCheck />
-              <span>
-                <strong>Your watch history</strong>
-                <small>
-                  {watch.watchedIds.length} / {movies.length} watched · see what’s left.
-                </small>
-              </span>
-              <ArrowRight size={18} />
-            </button>
             <p>Zoom out for an overview. Zoom in for larger posters and complete titles.</p>
           </div>
         </Dialog>
       )}
-      {panel === 'journey' && <JourneyPicker onClose={closeExplore} onStart={startJourney} />}
-      {panel === 'connect' && <ConnectionGame onClose={closeExplore} onMovie={openFeatureFilm} />}
+      {panel === 'journey' && <JourneyPicker onClose={closeDiscover} onStart={startJourney} />}
+      {panel === 'connect' && <ConnectionGame onClose={closeDiscover} onMovie={openFeatureFilm} />}
       {panel === 'watch' && (
         <WatchProgress
           watchedIds={watch.watchedIds}
           onToggleWatched={watch.toggleWatched}
-          onClose={closeExplore}
+          onClose={closeWatchList}
           onMovie={openFeatureFilm}
           storageAvailable={watch.storageAvailable}
         />
